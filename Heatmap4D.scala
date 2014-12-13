@@ -5,22 +5,47 @@ import java.awt.{BasicStroke, Color, Graphics2D}
 object Heatmap4D {
   def sqr(x: Int) = x * x
 
-  def samples = 
-    Seq(Seq.fill(100)(V4D(20,30, 70, 20)),
-        Seq.fill(50)(V4D(20,50, 70, 40)),
-        Seq.fill(25)(V4D(20,70, 30, 10)),
-        Range(0, 200).map { n =>
-          V4D(40 + n % 4, 10 + n % 6, 60 + n % 8, 60 + n % 10)
-        }
-        ).flatten
+  def withTime[T](block: => T): (T, Long) = {
+      val startTime = System.currentTimeMillis()
+      val ret = block
+      val elapsedTime = System.currentTimeMillis() - startTime
+      (ret, elapsedTime)
+  }
+
+   // prints the number of milliseconds an expression takes to compute
+  def time[R](msg: String)(block: => R): R = {
+      val (res, elapsedTime) = withTime(block)
+      println(msg + f" took: ${elapsedTime/1000.0}%.3fs")
+      res
+  }
+
+  val samples: Seq[V4D] = 
+    Seq.fill(100) {
+       Seq(Seq.fill(100)(V4D(20,30, 70, 20)),
+           Seq.fill(50)(V4D(20,50, 70, 40)),
+           Seq.fill(25)(V4D(20,70, 30, 10)),
+           Range(0, 200).map { n =>
+             V4D(40 + n % 4, 10 + n % 6, 60 + n % 8, 60 + n % 25)
+           }
+           ).flatten
+    }.flatten
 
   def main(args: Array[String]) {
-    val hm = Heatmap4D(100, 120)
+    val hm = Heatmap4D(200, 200)
 
-    samples.foreach(hm.add _)
+    val s = samples
+    println(s"mapping ${s.size} vectors")
 
-    //ShowImage.showImage("/Users/dgopstein/nyu/subway/layout/heatmap_R68_random.png")
-    ShowImage.showImage(hm.toImage)
+    time("total") {
+      time("adding") {
+        s.foreach(hm.add _)
+      }
+
+      //ShowImage.showImage("/Users/dgopstein/nyu/subway/layout/heatmap_R68_random.png")
+      time("rendering") {
+        ShowImage.showImage(hm.toImage)
+      }
+    }
   }
 }
 
@@ -84,7 +109,7 @@ case class Heatmap4D(width: Int, height: Int) {
 
   def toImage = {
     val weights = gradientMap.view./*par.*/zipWithIndex.flatMap { case (a, aI) =>
-      println("aI: "+aI);
+      if ( aI % 10 == 0 ) println("aI: "+aI);
       a.view.zipWithIndex.flatMap { case (b, bI) =>
         b.view.zipWithIndex.flatMap { case (c, cI) =>
           c.view.zipWithIndex.map { case (d, dI) =>
