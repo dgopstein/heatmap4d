@@ -1,21 +1,30 @@
+import Math.sqrt
+import java.awt.image.BufferedImage
+import java.awt.{BasicStroke, Color, Graphics2D}
+
 object Heatmap4D {
+  def sqr(x: Int) = x * x
 
   def samples = 
-    Seq((0,20, 70, 80),
-        (0,20, 70, 80),
-        (0,20, 70, 80),
-        (30,20, 70, 20),
-        (50,20, 70, 50),
-        (50,20, 70, 50))
+    Seq(Seq.fill(100)(V4D(20,30, 70, 20)),
+        Seq.fill(50)(V4D(20,50, 70, 40)),
+        Seq.fill(25)(V4D(20,70, 30, 10)),
+        Range(0, 200).map { n =>
+          V4D(40 + n % 4, 10 + n % 6, 60 + n % 8, 60 + n % 10)
+        }
+        ).flatten
 
-  def main(args: Array[String]) = {
-    
-  }
+  def main(args: Array[String]) {
+    val hm = Heatmap4D(100, 120)
 
-  def heatmap(vectors: Seq[(Int, Int, Int, Int)]) = {
-    
+    samples.foreach(hm.add _)
+
+    //ShowImage.showImage("/Users/dgopstein/nyu/subway/layout/heatmap_R68_random.png")
+    ShowImage.showImage(hm.toImage)
   }
 }
+
+import Heatmap4D.sqr
 
 case class V4D(a: Int, b: Int, c: Int, d: Int) {
   def toSeq = Seq(a, b, c, d)
@@ -25,36 +34,36 @@ case class V4D(a: Int, b: Int, c: Int, d: Int) {
 
 
 
-case class Headmap4D(width: Int, height: Int) {
-  import Math.sqrt
+case class Heatmap4D(width: Int, height: Int) {
 
   var maxValue = 0
 
-  def sqr(x: Int) = x * x
   val maxMagnitude = sqrt(sqr(width) + sqr(height))
 
   val radius = 5
 
-  def gradientValue(p1: V4D, p2: V4D) = {
+  def gradientValue(p1: V4D, p2: V4D): Int = {
     //val colorDepth = radius
 
     val dist = p1.dist(p2)
 
-    if (dist >= radius) 0
-    else {
-      //(1 - (dist / radius.toFloat)) * colorDepth
-      radius - dist
-    }
+    val value = 
+      if (dist >= radius) 0
+      else {
+        //(1 - (dist / radius.toFloat)) * colorDepth
+        radius - Math.round(dist)
+      }
+    value.toInt
   }
 
-  val gradientMap =
+  val gradientMap: Array[Array[Array[Array[Int]]]] =
     Array.fill(width)(Array.fill(height){
       Array.fill(width)(Array.fill(height)(0))
     })
 
   def add(v: V4D) = {
-    def sliceX(x) = (Seq(0, x - radius).max, Seq(width, x + radius).min)
-    def sliceY(y) = (Seq(0, y - radius).may, Seq(height, y + radius).min)
+    def sliceX(x: Int) = (Seq(0, x - radius).max, Seq(width, x + radius).min)
+    def sliceY(y: Int) = (Seq(0, y - radius).max, Seq(height, y + radius).min)
 
     val sA = sliceX(v.a)
     val sB = sliceY(v.b)
@@ -74,10 +83,11 @@ case class Headmap4D(width: Int, height: Int) {
   }
 
   def toImage = {
-    val weights = gradientMap.zipWithIndex.flatMap { case (a, aI) =>
-      a.zipWithIndex.flatMap { case (b, bI) =>
-        b.zipWithIndex.flatMap { case (c, cI) =>
-          c.zipWithIndex.map { case (d, dI) =>
+    val weights = gradientMap.view./*par.*/zipWithIndex.flatMap { case (a, aI) =>
+      println("aI: "+aI);
+      a.view.zipWithIndex.flatMap { case (b, bI) =>
+        b.view.zipWithIndex.flatMap { case (c, cI) =>
+          c.view.zipWithIndex.map { case (d, dI) =>
             (V4D(aI, bI, cI, dI), d)
           }
         }
@@ -88,12 +98,81 @@ case class Headmap4D(width: Int, height: Int) {
     val filtered = weights.filter(_._2 > 0)
     var sorted = filtered.sortBy(_._2)
 
-    val img = new BufferedImage(width, height)
+    val img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+
+    val g2d = img.createGraphics();
+    g2d.setBackground(Color.WHITE);
+    g2d.setColor(Color.BLACK);
     sorted.foreach { case (V4D(a, b, c, d), weight) =>
-      stroke(weight)
-      img.drawLine(a, b, c, d)
+      val intensity = 3 * (weight / maxValue.toFloat)
+      g2d.setColor( Math.round(intensity) match {
+        case 0 => Color.GREEN
+        case 1 => Color.YELLOW
+        case 2 => Color.ORANGE
+        case 3 => Color.RED
+        case _ => Color.BLACK
+      })
+
+      g2d.setStroke(new BasicStroke(2));
+      g2d.drawLine(a, b, c, d)
     }
 
     img
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+import swing._                                                                
+
+import java.awt.image.BufferedImage                                           
+import java.io.File                                                           
+import javax.imageio.ImageIO                                                  
+
+class ImagePanel(bufferedImage: BufferedImage) extends Panel {                                                                             
+  override def paintComponent(g:Graphics2D) = {                                                                           
+    if (null != bufferedImage) g.drawImage(bufferedImage, 0, 0, null)         
+  }                                                                           
+}                                                                             
+
+case class ImagePanelDemo(img: BufferedImage) extends SimpleSwingApplication {
+  def top = new MainFrame { title = "Image Panel Demo"; contents = new ImagePanel(img)}
+}
+
+object ShowImage {
+  def showImage(path: String) { showImage(javax.imageio.ImageIO.read(new java.io.File(path))) }
+  def showImage(img: BufferedImage) {
+    import javax.swing._
+    import java.awt.{Dimension, Graphics}
+  
+    val frame = new JFrame()
+    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
+  
+    val panel = new JPanel(){
+        override def paintComponent(g: Graphics){
+            super.paintComponent(g)
+            val g2 = g.create()
+            g2.drawImage(img, 0, 0, getWidth(), getHeight(), null)
+            g2.dispose()
+        }
+  
+        override def getPreferredSize = {
+            new Dimension(img.getWidth(), img.getHeight())
+        }
+    }
+  
+    frame.add(panel)
+    frame.pack()
+    frame.setLocationRelativeTo(null)
+    frame.setVisible(true)
   }
 }
