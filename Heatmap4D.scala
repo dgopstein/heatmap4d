@@ -1,6 +1,7 @@
 import Math.sqrt
 import java.awt.image.BufferedImage
 import java.awt.{BasicStroke, Color, Graphics2D}
+import scala.io.Source
 
 object Heatmap4D {
   def sqr(x: Int) = x * x
@@ -19,7 +20,8 @@ object Heatmap4D {
       res
   }
 
-  val samples: Seq[V4D] = 
+
+  lazy val samples: Seq[V4D] = 
     Seq.fill(100) {
        Seq(Seq.fill(100)(V4D(20,30, 70, 20)),
            Seq.fill(50)(V4D(20,50, 70, 40)),
@@ -30,15 +32,29 @@ object Heatmap4D {
            ).flatten
     }.flatten
 
+  //val size = 200
+  val size = 100
   def main(args: Array[String]) {
-    val hm = Heatmap4D(200, 200)
+    val s: Seq[V4D] = args.headOption.map(parseFile)).getOrElse(samples)
+
+    heatmap(s)
+  }
+
+  def heatmap(samples: Seq[V4D]) = {
+    val hm = Heatmap4D(size, size)
 
     val s = samples
     println(s"mapping ${s.size} vectors")
 
     time("total") {
       time("adding") {
-        s.foreach(hm.add _)
+        val printerval = 1000
+        print(s"adding ${printerval} [")
+        s.view.zipWithIndex.foreach { case (vect, i) =>
+          if (i % printerval == 0) print(".")
+          hm.add(vect)
+        }
+        println("]")
       }
 
       //ShowImage.showImage("/Users/dgopstein/nyu/subway/layout/heatmap_R68_random.png")
@@ -47,6 +63,9 @@ object Heatmap4D {
       }
     }
   }
+
+  def parseFile(filename: String): Option[Seq[V4D]] = 
+    Source.fromFile(filename).getLines.map(_.split(",").map(x => (x.toFloat * size).toInt)).map{ case Array(a: Int, b: Int, c: Int, d: Int) => V4D(a, b, c, d) }.toSeq
 }
 
 import Heatmap4D.sqr
@@ -65,7 +84,7 @@ case class Heatmap4D(width: Int, height: Int) {
 
   val maxMagnitude = sqrt(sqr(width) + sqr(height))
 
-  val radius = 5
+  val radius = 8
 
   def gradientValue(p1: V4D, p2: V4D): Int = {
     //val colorDepth = radius
@@ -108,8 +127,10 @@ case class Heatmap4D(width: Int, height: Int) {
   }
 
   def toImage = {
+    val printerval = 10
+    print(s"rendering ${printerval} [")
     val weights = gradientMap.view./*par.*/zipWithIndex.flatMap { case (a, aI) =>
-      if ( aI % 10 == 0 ) println("aI: "+aI);
+      if ( aI % 10 == 0 ) print("aI: "+aI);
       a.view.zipWithIndex.flatMap { case (b, bI) =>
         b.view.zipWithIndex.flatMap { case (c, cI) =>
           c.view.zipWithIndex.map { case (d, dI) =>
@@ -118,6 +139,7 @@ case class Heatmap4D(width: Int, height: Int) {
         }
       }
     }
+    println("]")
 
     // only draw vectors that are represented
     val filtered = weights.filter(_._2 > 0)
@@ -125,18 +147,31 @@ case class Heatmap4D(width: Int, height: Int) {
 
     val img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
 
+    def interpColors(x: Float) = {
+      val colors = Seq(Color.BLUE, Color.GREEN, Color.YELLOW, Color.ORANGE, Color.RED, Color.RED, Color.RED)
+      
+      //val start = (x * (colors.size - 2))
+      //val startI = start.toInt
+      //val offset = start - startI
+      val offset = x
+      //val Seq(a: Color, b: Color) = colors.slice(startI, startI + 2)
+      val a = Color.BLACK
+      val b = Color.WHITE
+
+      val channels = 
+       (offset * (a.getRed()/255.0) + (1-offset) * (b.getRed()/255.0),
+        offset * (a.getGreen()/255.0) + (1-offset) * (b.getGreen()/255.0),
+        offset * (a.getBlue()/255.0) + (1-offset) * (b.getBlue()/255.0))
+
+      new Color(channels._1.toFloat, channels._2.toFloat, channels._3.toFloat)
+    }
+
     val g2d = img.createGraphics();
     g2d.setBackground(Color.WHITE);
     g2d.setColor(Color.BLACK);
     sorted.foreach { case (V4D(a, b, c, d), weight) =>
-      val intensity = 3 * (weight / maxValue.toFloat)
-      g2d.setColor( Math.round(intensity) match {
-        case 0 => Color.GREEN
-        case 1 => Color.YELLOW
-        case 2 => Color.ORANGE
-        case 3 => Color.RED
-        case _ => Color.BLACK
-      })
+      val intensity = weight / maxValue.toFloat
+      g2d.setColor( interpColors(intensity) )
 
       g2d.setStroke(new BasicStroke(2));
       g2d.drawLine(a, b, c, d)
@@ -146,58 +181,21 @@ case class Heatmap4D(width: Int, height: Int) {
   }
 }
 
+import Heatmap4D._
 
 
+object Histo4D {
+  def histo(vects: Seq[V4D]) = {
+    // percentage of interest
+    val poi = .05
 
+    val bins = vects
+  }
 
+  def main(args: Array[String]) {
+    val s: Seq[V4D] = args.headOption.map(parseFile)).getOrElse(samples)
 
-
-
-
-
-
-
-import swing._                                                                
-
-import java.awt.image.BufferedImage                                           
-import java.io.File                                                           
-import javax.imageio.ImageIO                                                  
-
-class ImagePanel(bufferedImage: BufferedImage) extends Panel {                                                                             
-  override def paintComponent(g:Graphics2D) = {                                                                           
-    if (null != bufferedImage) g.drawImage(bufferedImage, 0, 0, null)         
-  }                                                                           
-}                                                                             
-
-case class ImagePanelDemo(img: BufferedImage) extends SimpleSwingApplication {
-  def top = new MainFrame { title = "Image Panel Demo"; contents = new ImagePanel(img)}
-}
-
-object ShowImage {
-  def showImage(path: String) { showImage(javax.imageio.ImageIO.read(new java.io.File(path))) }
-  def showImage(img: BufferedImage) {
-    import javax.swing._
-    import java.awt.{Dimension, Graphics}
-  
-    val frame = new JFrame()
-    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
-  
-    val panel = new JPanel(){
-        override def paintComponent(g: Graphics){
-            super.paintComponent(g)
-            val g2 = g.create()
-            g2.drawImage(img, 0, 0, getWidth(), getHeight(), null)
-            g2.dispose()
-        }
-  
-        override def getPreferredSize = {
-            new Dimension(img.getWidth(), img.getHeight())
-        }
-    }
-  
-    frame.add(panel)
-    frame.pack()
-    frame.setLocationRelativeTo(null)
-    frame.setVisible(true)
+    histo(s)
   }
 }
+
