@@ -3,6 +3,13 @@ import java.awt.image.BufferedImage
 import java.awt.{BasicStroke, Color, Graphics2D}
 import scala.io.Source
 
+case class V4D(a: Int, b: Int, c: Int, d: Int) {
+  def toSeq = Seq(a, b, c, d)
+
+  // Euclidean Distance
+  def distance(other: V4D) = sqrt(toSeq.zip(other.toSeq).map{case (x, y) => Math.pow(y - x, 2)}.sum)
+}
+
 object Heatmap4D {
   def sqr(x: Int) = x * x
 
@@ -35,13 +42,13 @@ object Heatmap4D {
   //val size = 200
   val size = 100
   def main(args: Array[String]) {
-    val s: Seq[V4D] = args.headOption.map(parseFile)).getOrElse(samples)
+    val s: Seq[V4D] = args.headOption.map(parseFile).getOrElse(samples)
 
     heatmap(s)
   }
 
   def heatmap(samples: Seq[V4D]) = {
-    val hm = Heatmap4D(size, size)
+    val hm: Heatmap4D = new Heatmap4D(size, size)
 
     val s = samples
     println(s"mapping ${s.size} vectors")
@@ -70,14 +77,6 @@ object Heatmap4D {
 
 import Heatmap4D.sqr
 
-case class V4D(a: Int, b: Int, c: Int, d: Int) {
-  def toSeq = Seq(a, b, c, d)
-
-  def dist(other: V4D) = sqrt(toSeq.zip(other.toSeq).map{case (x, y) => sqr(y - x)}.sum)
-}
-
-
-
 case class Heatmap4D(width: Int, height: Int) {
 
   var maxValue = 0
@@ -89,13 +88,13 @@ case class Heatmap4D(width: Int, height: Int) {
   def gradientValue(p1: V4D, p2: V4D): Int = {
     //val colorDepth = radius
 
-    val dist = p1.dist(p2)
+    val distance = p1.distance(p2)
 
     val value = 
-      if (dist >= radius) 0
+      if (distance >= radius) 0
       else {
         //(1 - (dist / radius.toFloat)) * colorDepth
-        radius - Math.round(dist)
+        radius - Math.round(distance)
       }
     value.toInt
   }
@@ -183,7 +182,6 @@ case class Heatmap4D(width: Int, height: Int) {
 
 import Heatmap4D._
 
-
 object Histo4D {
   def histo(vects: Seq[V4D]) = {
     // percentage of interest
@@ -193,7 +191,7 @@ object Histo4D {
   }
 
   def main(args: Array[String]) {
-    val s: Seq[V4D] = args.headOption.map(parseFile)).getOrElse(samples)
+    val s: Seq[V4D] = args.headOption.map(parseFile).getOrElse(samples)
 
     histo(s)
   }
