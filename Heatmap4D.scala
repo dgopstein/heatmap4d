@@ -41,12 +41,6 @@ case class Heatmap4DBruteImperative(width: Int, height: Int) extends HeatmapLib(
            y2 <- Range(max(0, endY-radius),   min(height, endY+radius))
            } {
 
-        //val distance = Math.sqrt(
-        //    sqr(startX-x1)+
-        //    sqr(startY-y1)+
-        //    sqr(endX-x2) +
-        //    sqr(endY-y2))
-
         gradientMap(x1)(y1)(x2)(y2) += gradientValue(p, V4DI(x1, y1, x2, y2))
         maxValue = max(maxValue, gradientMap(x1)(y1)(x2)(y2))
       }
