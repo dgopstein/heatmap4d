@@ -89,7 +89,7 @@ case class V4DD(a: Double, b: Double, c: Double, d: Double) extends V4D[Double] 
 abstract class HeatmapLib(width: Int, height: Int) {
   def run(points: Seq[V4DI])
 
-  var maxValue = 0
+  var maxValue = 0d
 
   val maxMagnitude = sqrt(sqr(width) + sqr(height))
 
@@ -109,7 +109,7 @@ abstract class HeatmapLib(width: Int, height: Int) {
     value.toInt
   }
 
-  val gradientMap: Array[Array[Array[Array[Int]]]] =
+  val gradientMap: Array[Array[Array[Array[Double]]]] =
     Array.fill(width)(Array.fill(height){
       Array.fill(width)(Array.fill(height)(0))
     })

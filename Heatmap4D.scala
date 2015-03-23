@@ -48,14 +48,60 @@ case class Heatmap4DBruteImperative(width: Int, height: Int) extends HeatmapLib(
   }
 }
 
+// http://web.archive.org/web/20060718054020/http://www.acm.uiuc.edu/siggraph/workshops/wjarosz_convolution_2001.pdf
+case class Heatmap4DBoxFilter(width: Int, height: Int) extends HeatmapLib(width, height) {
+  import Math.{min, max}
+  def run(points: Seq[V4DI]) = {
+    val boxFilter = Seq.fill(radius)(1.0)
+
+    // Initialize the array by laying all points down
+    for (p@V4DI(startX, startY, endX, endY) <- points) {
+      gradientMap(startX)(startY)(endX)(endY) += 1.0
+    }
+
+    def average(seq: Seq[Double]) = seq.sum / seq.length
+
+    def convolve(x: Int, dim: (Int) => Double) = {
+      val region = Range(x - radius, x + radius).zip(boxFilter)
+                     .filter { case (i, weight) => i > 0 && i < width}
+      val filtered = region.map{ case (i, weight) => weight * dim(i) }
+      average(filtered)
+    }
+
+    // Run a box filter in each of the basic directions
+    // TODO this misses the radius/2 pixels on each edge
+
+    val dims =
+      Seq(i => gradientMap(i)(startY)(endX)(endY),
+          i => gradientMap(startX)(i)(endX)(endY),
+          i => gradientMap(startX)(startY)(i)(endY),
+          i => gradientMap(startX)(startY)(endX)(i))
+    
+    for (dim <- dims) {
+      for {x1 <- Range(0, width)
+           y1 <- Range(0, height)
+           x2 <- Range(0, width)
+           y2 <- Range(0, height)} {
+        dim = convolve(dim)
+      }
+    }
+  }
+}
+
 object Heatmap4D {
   def main(args: Array[String]) {
     val s = samples
     println(s"mapping ${s.size} vectors")
 
-    implicit val size = 50
-    //val hm = Heatmap4DBruteForce(size, size)
-    val hm = Heatmap4DBruteImperative(size, size)
+    val size = 50
+    
+    // p -> number of points
+    // r -> radius of filter
+    // n -> size of one dimension of image
+
+    //val hm = Heatmap4DBruteForce(size, size)       // O(p*r^4)
+    //val hm = Heatmap4DBruteImperative(size, size)  // O(p*r^4)
+    val hm = Heatmap4DBoxFilter(size, size)          // O(n^4) - this can be optimized  by remembering which pixles have values so that not every pixel needs to be iterated, only those within the radius of the points
 
     time("total") {
       ShowImage.showImage(pointsToImg(size*10, s))
