@@ -6,6 +6,13 @@ object HeatmapLib {
   def sqr(x: Int) = x * x
   def sqr(x: Double) = x * x
 
+  def arrayToJson[T <: Any](a: Array[T]): String = a match {
+    case ao: Array[Double] => ao.mkString("[", ",", "]")
+    case aa: Array[Array[Double]] => aa.map(arrayToJson).mkString("[", ",", "]")
+    case aa: Array[Array[Array[Double]]] => aa.map(arrayToJson).mkString("[", ",", "]")
+    case aa: Array[Array[Array[Array[Double]]]] => aa.map(arrayToJson).mkString("[", ",", "]")
+  }
+
   def withTime[T](block: => T): (T, Long) = {
       val startTime = System.currentTimeMillis()
       val ret = block
@@ -86,14 +93,17 @@ case class V4DD(a: Double, b: Double, c: Double, d: Double) extends V4D[Double] 
 
 
 
-abstract class HeatmapLib(width: Int, height: Int) {
+abstract class HeatmapLib(size: Int) {
+  val width = size
+  val height = size
+
   def run(points: Seq[V4DI])
 
   var maxValue = 0d
 
   val maxMagnitude = sqrt(sqr(width) + sqr(height))
 
-  val radius = 5
+  val radius = (size * .05).round.toInt
 
   def gradientValue(p1: V4DI, p2: V4DI): Int = {
     //val colorDepth = radius
@@ -136,8 +146,8 @@ abstract class HeatmapLib(width: Int, height: Int) {
     val g2d = img.createGraphics()
     g2d.setBackground(Color.getHSBColor(0, 0, 0))
     sorted.foreach { case (V4DI(a, b, c, d), weight) =>
-      val intensity = 1 - (weight / maxValue.toFloat)
-      g2d.setColor(Color.getHSBColor(0, 0, intensity))
+      val intensity = 1 - (weight / maxValue.toDouble)
+      g2d.setColor(Color.getHSBColor(0, 0, intensity.toFloat))
       g2d.setStroke(new BasicStroke(1))
       g2d.drawLine(a, b, c, d)
     }
@@ -200,4 +210,7 @@ object ShowImage {
     frame.setLocationRelativeTo(null)
     frame.setVisible(true)
   }
+
+  def saveImage(img: BufferedImage, path: String) =
+    ImageIO.write(img, "png", new File(path))
 }
