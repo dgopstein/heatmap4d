@@ -6,3 +6,6 @@
 *.png
 *.json
 
+project/
+target/
+

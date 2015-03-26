@@ -1,6 +1,34 @@
+package heatmap4d
+
 import Math.sqrt
 import java.awt.image.BufferedImage
 import java.awt.{BasicStroke, Color, Graphics2D}
+
+import HeatmapLib.{gend2i, sqr}
+
+trait V4D[T] {
+  val a: T
+  val b: T
+  val c: T
+  val d: T
+
+  def toSeq: Seq[T] = Seq(a, b, c, d)
+
+  def dist(other: V4D[T]): Double
+}
+
+case class V4DI(a: Int, b: Int, c: Int, d: Int) extends V4D[Int] {
+  def dist(other: V4D[Int]) = sqrt(toSeq.zip(other.toSeq).map{case (x, y) => sqr(y - x)}.sum)
+}
+
+case class V4DD(a: Double, b: Double, c: Double, d: Double) extends V4D[Double]  {
+  def dist(other: V4D[Double]) = sqrt(toSeq.zip(other.toSeq).map{case (x, y) => sqr(y - x)}.sum)
+
+  def toI(size: Int) = {
+    val d2i = gend2i(size)
+    V4DI(d2i(a), d2i(b), d2i(c), d2i(d))
+  }
+}
 
 object HeatmapLib {
   def sqr(x: Int) = x * x
@@ -65,31 +93,7 @@ object HeatmapLib {
   }
 }
 
-import HeatmapLib.{gend2i, sqr}
 
-trait V4D[T] {
-  val a: T
-  val b: T
-  val c: T
-  val d: T
-
-  def toSeq: Seq[T] = Seq(a, b, c, d)
-
-  def dist(other: V4D[T]): Double
-}
-
-case class V4DI(a: Int, b: Int, c: Int, d: Int) extends V4D[Int] {
-  def dist(other: V4D[Int]) = sqrt(toSeq.zip(other.toSeq).map{case (x, y) => sqr(y - x)}.sum)
-}
-
-case class V4DD(a: Double, b: Double, c: Double, d: Double) extends V4D[Double]  {
-  def dist(other: V4D[Double]) = sqrt(toSeq.zip(other.toSeq).map{case (x, y) => sqr(y - x)}.sum)
-
-  def toI(size: Int) = {
-    val d2i = gend2i(size)
-    V4DI(d2i(a), d2i(b), d2i(c), d2i(d))
-  }
-}
 
 
 
@@ -213,4 +217,10 @@ object ShowImage {
 
   def saveImage(img: BufferedImage, path: String) =
     ImageIO.write(img, "png", new File(path))
+
+  def readImage(path: String) =
+    ImageIO.read(new java.io.File(path))
+
+  def diffImages(img1: BufferedImage, img2: BufferedImage) =
+    
 }

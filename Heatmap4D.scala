@@ -1,4 +1,6 @@
-import HeatmapLib._
+package heatmap4d
+
+import heatmap4d.HeatmapLib._
 import Heatmap4D._
 
 case class Heatmap4DBruteForce(size: Int) extends HeatmapLib(size) {
