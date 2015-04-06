@@ -2,6 +2,7 @@ package heatmap4d
 
 import heatmap4d.HeatmapLib._
 import Heatmap4D._
+import java.awt.image.BufferedImage
 
 case class Heatmap4DBruteForce(size: Int) extends HeatmapLib(size) {
   def run(points: Seq[V4DI]) = {
@@ -50,6 +51,35 @@ case class Heatmap4DBruteImperative(size: Int) extends HeatmapLib(size) {
   }
 }
 
+case class Heatmap4DHashMap(size: Int) extends HeatmapLib(size) {
+  import Math.{min, max}
+
+  val gradientHashMap = new collection.mutable.HashMap[V4DI, Double]() { override def default(key: V4DI) = 0.0 }
+
+  override def pointWeights = gradientHashMap.toSeq
+
+  def run(points: Seq[V4DI]) = {
+
+    // Loop all points
+    for (p@V4DI(startX, startY, endX, endY) <- points) {
+
+      // Loop the area in the filter
+      for {
+           x1 <- Range(max(0, startX-radius), min(width,  startX+radius))
+           y1 <- Range(max(0, startY-radius), min(height, startY+radius))
+           x2 <- Range(max(0, endX-radius),   min(width,  endX+radius))
+           y2 <- Range(max(0, endY-radius),   min(height, endY+radius))
+           } {
+
+        val vec = V4DI(x1, y1, x2, y2)
+
+        gradientHashMap(vec) += gradientValue(p, vec)
+        maxValue = max(maxValue, gradientHashMap(vec))
+      }
+    }
+  }
+}
+
 // http://web.archive.org/web/20060718054020/http://www.acm.uiuc.edu/siggraph/workshops/wjarosz_convolution_2001.pdf
 case class Heatmap4DConvolution(size: Int) extends HeatmapLib(size) {
 
@@ -83,10 +113,13 @@ case class Heatmap4DConvolution(size: Int) extends HeatmapLib(size) {
 }
 
 object Heatmap4D {
+  def baselineDistance(img: BufferedImage) =
+    ShowImage.diffImages(ShowImage.readImage(""), img)
+
   def main(args: Array[String]) {
     val s = samples
 
-    val size = 22
+    val size = 100
     println(s"image size: " + size + "^4")
     println(s"point pairs:" + s.size)
     
@@ -96,7 +129,8 @@ object Heatmap4D {
 
     //val hm = Heatmap4DBruteForce(size, size)       // O(p*r^4)
     //val hm = Heatmap4DBruteImperative(size, size)  // O(p*r^4)
-    val hm = Heatmap4DConvolution(size)          // O(n^4*r^4)
+    //val hm = Heatmap4DConvolution(size)          // O(n^4*r^4)
+    val hm = Heatmap4DHashMap(size)
 
     println("kernel radius: " + hm.radius)
 

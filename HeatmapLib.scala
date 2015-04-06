@@ -128,8 +128,7 @@ abstract class HeatmapLib(size: Int) {
       Array.fill(width)(Array.fill(height)(0))
     })
 
-
-  def toImage = {
+  def pointWeights: Seq[(V4DI, Double)] = {
     val weights = gradientMap.view./*par.*/zipWithIndex.flatMap { case (a, aI) =>
       if ( aI % 10 == 0 ) println("aI: "+aI);
       a.view.zipWithIndex.flatMap { case (b, bI) =>
@@ -140,6 +139,11 @@ abstract class HeatmapLib(size: Int) {
         }
       }
     }
+    weights
+  }
+
+  def toImage = {
+    val weights = pointWeights
 
     // only draw vectors that are represented
     val filtered = weights.filter(_._2 > 0)
@@ -171,21 +175,21 @@ abstract class HeatmapLib(size: Int) {
 
 
 
-import swing._                                                                
-
+import javax.swing._                                                                
+import java.awt.Panel
 import java.awt.image.BufferedImage                                           
 import java.io.File                                                           
 import javax.imageio.ImageIO                                                  
 
 class ImagePanel(bufferedImage: BufferedImage) extends Panel {                                                                             
-  override def paintComponent(g:Graphics2D) = {                                                                           
+  /* override */ def paintComponent(g:Graphics2D) = {                                                                           
     if (null != bufferedImage) g.drawImage(bufferedImage, 0, 0, null)         
   }                                                                           
 }                                                                             
 
-case class ImagePanelDemo(img: BufferedImage) extends SimpleSwingApplication {
-  def top = new MainFrame { title = "Image Panel Demo"; contents = new ImagePanel(img)}
-}
+// case class ImagePanelDemo(img: BufferedImage) extends SimpleSwingApplication {
+//   def top = new MainFrame { title = "Image Panel Demo"; contents = new ImagePanel(img)}
+// }
 
 object ShowImage {
   def showImage(path: String) { showImage(javax.imageio.ImageIO.read(new java.io.File(path))) }
@@ -221,6 +225,16 @@ object ShowImage {
   def readImage(path: String) =
     ImageIO.read(new java.io.File(path))
 
-  def diffImages(img1: BufferedImage, img2: BufferedImage) =
+  def arrayDistance(a1: Array[Int], a2: Array[Int]) =
+    a1.zip(a2).map{ case (x, y) => sqr(y - x) }.sum
+
+  def diffImages(img1: BufferedImage, img2: BufferedImage) = {
+    val w = img1.getWidth
+    val h = img1.getHeight
+    val rgb1 = img1.getRGB(0, 0, w, h, null, 0, w)
+    val rgb2 = img2.getRGB(0, 0, w, h, null, 0, w)
+
+    arrayDistance(rgb1, rgb2)
+  }
     
 }
