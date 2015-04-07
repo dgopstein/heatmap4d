@@ -1,5 +1,7 @@
 package heatmap4d
 
+// head -200 trip_data_1_coords.csv | grep -v ',0,' | ruby -lane 'c = $_.split(",").map(&:to_f); lat=->(x){(x+74.05)*8}; lon=->(x){(x-40.7)*8}; puts [lat[c[0]],lon[c[1]],lat[c[2]],lon[c[3]]].join(",")' | grep -v ',[-1]' > normalized_taxi_200.csv
+
 import heatmap4d.HeatmapLib._
 import Heatmap4D._
 import java.awt.image.BufferedImage
@@ -117,7 +119,13 @@ object Heatmap4D {
     ShowImage.diffImages(ShowImage.readImage(""), img)
 
   def main(args: Array[String]) {
-    val s = samples
+    val s =
+      if (args.isEmpty) {
+        samples
+      } else {
+        io.Source.fromFile(args(0)).getLines().map(_.split(',').map(_.toDouble)).toSeq
+          .map{case Array(a,b,c,d) => V4DD(a,b,c,d)}.toSeq
+      }
 
     val size = 100
     println(s"image size: " + size + "^4")

@@ -66,8 +66,8 @@ object HeatmapLib {
     }.flatten
 
   val lineVsFan = Seq(
-    Seq.fill(2)(V4DD(1/4f, 1/8f, 1/4f, 7/8f)),
-    Range(0, 10).map { n =>
+    Seq.fill(20)(V4DD(1/4f, 1/8f, 1/4f, 7/8f)),
+    Range(0, 100).map { n =>
       V4DD(2/3f + (1/5f)*(n/10f-1/2f), 1/8f,
            2/3f - (1/5f)*(n/10f-1/2f), 7/8f)
     }
