@@ -115,6 +115,8 @@ case class Heatmap4DConvolution(size: Int) extends HeatmapLib(size) {
 }
 
 object Heatmap4D {
+  type A4D = Array[Array[Array[Array[Double]]]]
+
   def baselineDistance(img: BufferedImage) =
     ShowImage.diffImages(ShowImage.readImage(""), img)
 
@@ -159,5 +161,59 @@ object Heatmap4D {
       }
     }
   }
+
 }
 
+object MeanShift {
+  def sum4D(pts: Seq[V4DD]) = {
+    def sum1(pts1: Seq[V4DD], sumV: V4DD): V4DD = {
+      val V4DD(a1, b1, c1, d1) = sumV
+      pts1 match {
+        case V4DD(a, b, c, d) :: xs => sum1(xs, V4DD(a + a1, b + b1, c + c1, d + d1))
+        case Nil => sumV
+      }
+    }
+
+    sum1(pts, V4DD(0, 0, 0, 0))
+  }
+
+  def mean4D(pts: Seq[V4DD]) = {
+    val size = pts.size
+    val V4DD(a, b, c, d) = sum4D(pts)
+    V4DD(a / size, b / size, c / size, d / size)
+  }
+
+  def variance4D(pts: Seq[V4DD]) = {
+    val mean = mean4D(pts)
+    val errs = pts.map(_.dist(mean))
+    val variance = errs.sum / errs.size
+    variance
+  }
+
+  // Selects the node in question along with others
+  // Likely selects a->b as well as b->a (depending on how its called
+  def inWindow(pts: Seq[V4DD], pt: V4DD, windowSize: Double) = pts.filter(_.dist(pt) < windowSize)
+
+  def meanShiftStep4D(windowSize: Double, pts: Seq[V4DD]) = {
+    val windows = pts.map(pt => inWindow(pts, pt, windowSize))
+    val newMeans = windows.map(mean4D)
+
+    newMeans
+  }
+
+  def meanShift4D(pts: Seq[V4DD]) = {
+    val windowSize = 5.0
+    var newPts = pts
+
+
+    Range(0, 10).foreach { i =>
+      val variance = variance4D(newPts)
+      println(s"[$i] variance: "+variance)
+
+      newPts = meanShiftStep4D(windowSize, newPts)
+    }
+
+    newPts
+  }
+
+}
