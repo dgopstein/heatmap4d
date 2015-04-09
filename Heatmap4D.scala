@@ -92,7 +92,13 @@ case class Heatmap4DMeanShift(size: Int) extends HeatmapLib(size) {
 
 
   def run(points: Seq[V4DI]) = {
-    gradientHashMap = MeanShift.meanShift4D(points.map(_.toV4DD)).groupBy(identity).map{case (k,v) => k.toV4DI -> v.size.toDouble}
+    // One line per cluster
+    //gradientHashMap = MeanShift.meanShift4D(points.map(_.toV4DD)).groupBy(identity).map{case (k,v) => k.toV4DI -> v.size.toDouble}
+
+    // Multiple lines per cluster
+    gradientHashMap = points.zip(MeanShift.meanShift4D(points.map(_.toV4DD))).groupBy(_._2)
+      .flatMap{case (k: V4DD, pairs: Seq[(V4DI, V4DD)]) => pairs.map{_._1 -> pairs.size.toDouble}}
+
     maxValue = gradientHashMap.values.max
   }
 }
@@ -145,7 +151,7 @@ object Heatmap4D {
           .map{case Array(a,b,c,d) => V4DD(a,b,c,d)}.toSeq
       }
 
-    val size = 100
+    val size = 1000
     println(s"image size: " + size + "^4")
     println(s"point pairs:" + s.size)
     
@@ -172,7 +178,7 @@ object Heatmap4D {
       time("rendering") {
 
         val filename = s"heatmap4d_${size}_${s.size}_${hm.radius}_${System.currentTimeMillis / 1000}"
-        reflect.io.File(filename+".json").writeAll(arrayToJson(hm.gradientMap))
+        //reflect.io.File(filename+".json").writeAll(arrayToJson(hm.gradientMap))
         ShowImage.saveImage(hm.toImage, filename+".png")
         ShowImage.showImage(hm.toImage)
       }
@@ -186,7 +192,7 @@ object MeanShift {
     def sum1(pts1: Seq[V4DD], sumV: V4DD): V4DD = {
       val V4DD(a1, b1, c1, d1) = sumV
       pts1 match {
-        case V4DD(a, b, c, d) :: xs => sum1(xs, V4DD(a + a1, b + b1, c + c1, d + d1))
+        case V4DD(a, b, c, d) #:: xs => sum1(xs, V4DD(a + a1, b + b1, c + c1, d + d1))
         case Nil => sumV
       }
     }
@@ -219,7 +225,7 @@ object MeanShift {
   }
 
   def meanShift4D(pts: Seq[V4DD]) = {
-    val windowSize = 5.0
+    val windowSize = 50.0
     var newPts = pts
 
 

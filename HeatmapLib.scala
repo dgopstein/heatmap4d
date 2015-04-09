@@ -158,7 +158,7 @@ abstract class HeatmapLib(size: Int) {
     g2d.setBackground(Color.getHSBColor(0, 0, 0))
     sorted.foreach { case (V4DI(a, b, c, d), weight) =>
       val intensity = 1 - (weight / maxValue.toDouble)
-      g2d.setColor(Color.getHSBColor(0, 0, intensity.toFloat))
+      g2d.setColor(Color.getHSBColor((1.0-intensity).toFloat % 1f, (0.75 - 0.5*intensity).toFloat, intensity.toFloat))
       g2d.setStroke(new BasicStroke(1))
       g2d.drawLine(a, b, c, d)
     }
