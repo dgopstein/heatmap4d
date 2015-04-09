@@ -126,7 +126,7 @@ abstract class HeatmapLib(size: Int) {
     value.toInt
   }
 
-  val gradientMap: Array[Array[Array[Array[Double]]]] =
+  lazy val gradientMap: Array[Array[Array[Array[Double]]]] =
     Array.fill(width)(Array.fill(height){
       Array.fill(width)(Array.fill(height)(0))
     })
