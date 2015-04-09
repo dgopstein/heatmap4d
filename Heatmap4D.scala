@@ -57,7 +57,6 @@ case class Heatmap4DHashMap(size: Int) extends HeatmapLib(size) {
   import Math.{min, max}
 
   val gradientHashMap = new collection.mutable.HashMap[V4DI, Double]() { override def default(key: V4DI) = 0.0 }
-
   override def pointWeights = gradientHashMap.toSeq
 
   def run(points: Seq[V4DI]) = {
@@ -79,6 +78,22 @@ case class Heatmap4DHashMap(size: Int) extends HeatmapLib(size) {
         maxValue = max(maxValue, gradientHashMap(vec))
       }
     }
+  }
+}
+
+
+case class Heatmap4DMeanShift(size: Int) extends HeatmapLib(size) {
+
+  import Math.{min, max}
+
+  var gradientHashMap: Map[V4DI, Double] = Map()
+
+  override def pointWeights = gradientHashMap.toSeq
+
+
+  def run(points: Seq[V4DI]) = {
+    gradientHashMap = MeanShift.meanShift4D(points.map(_.toV4DD)).groupBy(identity).map{case (k,v) => k.toV4DI -> v.size.toDouble}
+    maxValue = gradientHashMap.values.max
   }
 }
 
@@ -114,6 +129,7 @@ case class Heatmap4DConvolution(size: Int) extends HeatmapLib(size) {
   }
 }
 
+
 object Heatmap4D {
   type A4D = Array[Array[Array[Array[Double]]]]
 
@@ -140,7 +156,8 @@ object Heatmap4D {
     //val hm = Heatmap4DBruteForce(size, size)       // O(p*r^4)
     //val hm = Heatmap4DBruteImperative(size, size)  // O(p*r^4)
     //val hm = Heatmap4DConvolution(size)          // O(n^4*r^4)
-    val hm = Heatmap4DHashMap(size)
+    //val hm = Heatmap4DHashMap(size)
+    val hm = Heatmap4DMeanShift(size)
 
     println("kernel radius: " + hm.radius)
 
@@ -206,9 +223,13 @@ object MeanShift {
     var newPts = pts
 
 
+    var oldVariance = 0.0
     Range(0, 10).foreach { i =>
       val variance = variance4D(newPts)
-      println(s"[$i] variance: "+variance)
+      val varianceDelta = oldVariance - variance
+      oldVariance = variance
+
+      println(s"[$i] varianceDelta: "+varianceDelta)
 
       newPts = meanShiftStep4D(windowSize, newPts)
     }

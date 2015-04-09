@@ -19,6 +19,7 @@ trait V4D[T] {
 
 case class V4DI(a: Int, b: Int, c: Int, d: Int) extends V4D[Int] {
   def dist(other: V4D[Int]) = sqrt(toSeq.zip(other.toSeq).map{case (x, y) => sqr(y - x)}.sum)
+  lazy val toV4DD = V4DD(a, b, c, d)
 }
 
 case class V4DD(a: Double, b: Double, c: Double, d: Double) extends V4D[Double]  {
@@ -28,6 +29,8 @@ case class V4DD(a: Double, b: Double, c: Double, d: Double) extends V4D[Double] 
     val d2i = gend2i(size)
     V4DI(d2i(a), d2i(b), d2i(c), d2i(d))
   }
+
+  lazy val toV4DI = V4DI(a.round.toInt, b.round.toInt, c.round.toInt, d.round.toInt)
 }
 
 object HeatmapLib {
