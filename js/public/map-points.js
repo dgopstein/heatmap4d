@@ -1,3 +1,4 @@
+var map;
 
 function setExportMapHandler() {
   var exportPNGElement = document.getElementById('export-png');
@@ -11,14 +12,24 @@ function setExportMapHandler() {
 }
 
 function drawPoints(arr) {
-  var vector = new ol.Layer.Vector('Point Layer');
-  arr.forEach(function(lat, lng) {
-    vector.addFeatures([ol.Geometry.Point(lat,lng)]))]);
+  var ptFeatures = arr.map(function(pair) {
+    var lat = pair[0];
+    var lng = pair[1];
+    console.log('lat/lng: ',lat,lng);
+    //return new ol.Feature({geometry: new ol.geom.Point(lat,lng)});
+    
+    return new ol.Feature({
+      geometry: new ol.geom.Point(ol.proj.transform([lng, lat], 'EPSG:4326', 'EPSG:3857'))
+    });
   });
-  map.addLayers([vector]);
+  console.log(ptFeatures);
+  var vectorSource = new ol.source.Vector({
+    features: ptFeatures //add an array of features
+  });
+  var vectorLayer = new ol.layer.Vector({title: 'Point Layer', source: vectorSource});
+  map.addLayer(vectorLayer);
+  //map.addLayers([vector]);
 }
-
-
 
 
 function initMap() {
@@ -36,17 +47,28 @@ function initMap() {
       zoom: 2
     })
   });
+  
+  //map = new OpenLayers.Map('map');
+  //map.addLayer(new OpenLayers.Layer.OSM());
 }
 
 function loadData() {
-  return JSON.parse(points);
+  //return JSON.parse(points);
+  return points;
 }
 
-var map;
 
 function main() {
   initMap();
   setExportMapHandler();
+
+  var pts = loadData();
+  var startPoints = pts.map(function(arr) {return [arr[1],arr[0]]});
+  var endPoints = pts.map(function(arr) {return [arr[3],arr[2]]});
+
+  drawPoints(startPoints.slice(0,200));
+
+  console.log('finished: ', pts.length);
 }
 
 main();
