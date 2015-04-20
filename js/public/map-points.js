@@ -15,7 +15,6 @@ function drawPoints(arr) {
   var ptFeatures = arr.map(function(pair) {
     var lat = pair[0];
     var lng = pair[1];
-    console.log('lat/lng: ',lat,lng);
     //return new ol.Feature({geometry: new ol.geom.Point(lat,lng)});
     
     return new ol.Feature({
@@ -43,8 +42,8 @@ function initMap() {
     controls:
       ol.control.defaults({}),
     view: new ol.View({
-      center: [0, 0],
-      zoom: 2
+      center: ol.proj.transform([-73.95, 40.75], 'EPSG:4326', 'EPSG:3857'),
+      zoom: 13
     })
   });
   
@@ -66,7 +65,7 @@ function main() {
   var startPoints = pts.map(function(arr) {return [arr[1],arr[0]]});
   var endPoints = pts.map(function(arr) {return [arr[3],arr[2]]});
 
-  drawPoints(startPoints.slice(0,200));
+  drawPoints(startPoints);
 
   console.log('finished: ', pts.length);
 }
