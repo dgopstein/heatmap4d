@@ -3,11 +3,11 @@
 .DS_Store
 *.iml
 .idea
-*.png
-*.xcf
 
 project/
 target/
 data/
 node_modules/
+output/
 
+js/pencil.tm2
