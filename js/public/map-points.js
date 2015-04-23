@@ -1,3 +1,48 @@
+content = 'end';
+
+pointStyles = {
+  none: undefined,
+  original:
+    new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 5,
+        fill: new ol.style.Fill({
+          color: 'rgba(255, 255, 255, .4)'
+        }),
+        stroke: new ol.style.Stroke({
+          color: 'rgba(51, 153, 204, 1)'
+          ,width: 1.2
+        })
+    })}),
+  start:
+    new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 5,
+        fill: new ol.style.Fill({
+          color: 'rgba(255, 255, 255, .4)'
+        }),
+        stroke: new ol.style.Stroke({
+          color: 'rgba(51, 153, 204, 1)'
+          ,width: 1.2
+        })
+      })
+    }),
+  end:
+    new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 5,
+        fill: new ol.style.Fill({
+          color: 'rgba(255, 255, 255, .4)'
+        }),
+        stroke: new ol.style.Stroke({
+          color: 'rgba(204, 81, 81, 1)'
+          ,width: 1.2
+        })
+      })
+    })
+}
+
+
 var map;
 
 function setExportMapHandler() {
@@ -23,9 +68,14 @@ function drawPoints(arr) {
   });
   console.log(ptFeatures);
   var vectorSource = new ol.source.Vector({
-    features: ptFeatures //add an array of features
+    features: ptFeatures, //add an array of features
   });
-  var vectorLayer = new ol.layer.Vector({title: 'Point Layer', source: vectorSource});
+  /*var*/ vectorLayer = new ol.layer.Vector({
+    title: 'Point Layer',
+    source: vectorSource,
+    style: pointStyles[content]
+  });
+  console.log('vectorLayer', vectorLayer.style);
   map.addLayer(vectorLayer);
   //map.addLayers([vector]);
 }
@@ -35,7 +85,10 @@ function initMap() {
   map = new ol.Map({
     layers: [
       new ol.layer.Tile({
-        source: new ol.source.OSM()
+        //source: new ol.source.OSM()
+        source: new ol.source.XYZ({
+          url: 'http://api.tiles.mapbox.com/v4/dgopstein.18df0fc9/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoiZGdvcHN0ZWluIiwiYSI6IkNNaFFYODAifQ.RO5unyKLMcbB-BPHdxer_w'
+        })
       })
     ],
     target: 'map',
@@ -53,7 +106,7 @@ function initMap() {
 
 function loadData() {
   //return JSON.parse(points);
-  return points;
+  return points.slice(0,10000);
 }
 
 
@@ -65,7 +118,7 @@ function main() {
   var startPoints = pts.map(function(arr) {return [arr[1],arr[0]]});
   var endPoints = pts.map(function(arr) {return [arr[3],arr[2]]});
 
-  drawPoints(startPoints);
+  drawPoints(content !== 'end' ? startPoints : endPoints);
 
   console.log('finished: ', pts.length);
 }
