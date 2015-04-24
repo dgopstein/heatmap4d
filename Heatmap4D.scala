@@ -151,7 +151,7 @@ object Heatmap4D {
           .map{case Array(a,b,c,d) => V4DD(a,b,c,d)}.toSeq
       }
 
-    val size = 150
+    val size = 1000
     println(s"image size: " + size + "^4")
     println(s"point pairs:" + s.size)
     
@@ -165,27 +165,31 @@ object Heatmap4D {
     val hmhm = Heatmap4DHashMap(size)
     val hm = Heatmap4DMeanShift(size)
 
-    def distance4d(pointWeights: Seq[(V4DI, Double)], array4d: collection.mutable.HashMap[V4DI, Double]) =
-      pointWeights.map { case (point, weight) => println((weight, array4d(point))); sqr(weight - array4d(point)) }.sum
+    def meanSquareError(pointWeights: Seq[(V4DI, Double)], array4d: collection.mutable.HashMap[V4DI, Double]) = {
+      // min is assumed to be 0
+      val srcMax = 1//pointWeights.maxBy(_._2)._2
+      val destMax = 1//array4d.values.max
+      pointWeights.map { case (point, weight) =>
+        println((weight/srcMax, array4d(point)/destMax)); sqr(weight/srcMax - array4d(point)/destMax)}.sum
+    }
 
-    // http://en.wikipedia.org/wiki/Root-mean-square_deviation#Normalized_root-mean-square_deviation
-    def nrmsd(pointWeights: Seq[(V4DI, Double)], array4d: collection.mutable.HashMap[V4DI, Double]) = {}
+    // http://en.wikipedia.org/wiki/Root-mean-square_deviation
+    def rmsd(pointWeights: Seq[(V4DI, Double)], array4d: collection.mutable.HashMap[V4DI, Double]) =
+      Math.sqrt(meanSquareError(pointWeights, array4d) / pointWeights.size) / pointWeights.maxBy(_._2)._2
 
     println("kernel radius: " + hm.radius)
 
     time("total") {
-      ShowImage.showImage(pointsToImg(size*10, s))
+      ShowImage.showImage(pointsToImg(size, s))
 
       time("adding") {
         println("running meanshift")
         hm.run(s.map(_.toI(size)))
 
-        println("running hashmap")
-        println("total mass of meanshift segments: "+hm.pointWeights.map(_._2).sum)
+        //println("running hashmap")
+        //hmhm.run(s.map(_.toI(size)))
 
-        hmhm.run(s.map(_.toI(size)))
-
-        println("distance between implementations: "+distance4d(hm.pointWeights, hmhm.gradientHashMap))
+       //println("root mean square deviation: "+rmsd(hm.pointWeights, hmhm.gradientHashMap))
       }
 
       time("rendering") {
@@ -242,9 +246,10 @@ object MeanShift {
 
 
     var oldVariance = 0.0
-    Range(0, 10).foreach { i =>
+    var varianceDelta = 99999999d
+    for (i <- 0 to 9 if Math.abs(varianceDelta) > 0.000001) {
       val variance = variance4D(newPts)
-      val varianceDelta = oldVariance - variance
+      varianceDelta = oldVariance - variance
       oldVariance = variance
 
       println(s"[$i] varianceDelta: "+varianceDelta)

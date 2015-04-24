@@ -110,7 +110,7 @@ abstract class HeatmapLib(size: Int) {
 
   val maxMagnitude = sqrt(sqr(width) + sqr(height))
 
-  val radius = (size * .05).round.toInt
+  val radius = (size * .005).round.toInt
 
   def gradientValue(p1: V4DI, p2: V4DI): Int = {
     //val colorDepth = radius
