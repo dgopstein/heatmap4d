@@ -96,7 +96,7 @@ case class Heatmap4DMeanShift(size: Int) extends HeatmapLib(size) {
     //gradientHashMap = MeanShift.meanShift4D(points.map(_.toV4DD)).groupBy(identity).map{case (k,v) => k.toV4DI -> v.size.toDouble}
 
     // Multiple lines per cluster
-    gradientHashMap = points.zip(MeanShift.meanShift4D(points.map(_.toV4DD))).groupBy(_._2)
+    gradientHashMap = points.zip(MeanShift.meanShift4D(radius, points.map(_.toV4DD))).groupBy(_._2)
       .flatMap{case (k: V4DD, pairs: Seq[(V4DI, V4DD)]) => pairs.map{_._1 -> pairs.size.toDouble}}
 
     maxValue = gradientHashMap.values.max
@@ -151,7 +151,7 @@ object Heatmap4D {
           .map{case Array(a,b,c,d) => V4DD(a,b,c,d)}.toSeq
       }
 
-    val size = 1000
+    val size = 150
     println(s"image size: " + size + "^4")
     println(s"point pairs:" + s.size)
     
@@ -162,8 +162,14 @@ object Heatmap4D {
     //val hm = Heatmap4DBruteForce(size, size)       // O(p*r^4)
     //val hm = Heatmap4DBruteImperative(size, size)  // O(p*r^4)
     //val hm = Heatmap4DConvolution(size)          // O(n^4*r^4)
-    //val hm = Heatmap4DHashMap(size)
+    val hmhm = Heatmap4DHashMap(size)
     val hm = Heatmap4DMeanShift(size)
+
+    def distance4d(pointWeights: Seq[(V4DI, Double)], array4d: collection.mutable.HashMap[V4DI, Double]) =
+      pointWeights.map { case (point, weight) => println((weight, array4d(point))); sqr(weight - array4d(point)) }.sum
+
+    // http://en.wikipedia.org/wiki/Root-mean-square_deviation#Normalized_root-mean-square_deviation
+    def nrmsd(pointWeights: Seq[(V4DI, Double)], array4d: collection.mutable.HashMap[V4DI, Double]) = {}
 
     println("kernel radius: " + hm.radius)
 
@@ -171,8 +177,15 @@ object Heatmap4D {
       ShowImage.showImage(pointsToImg(size*10, s))
 
       time("adding") {
-        //s.foreach(v => hm.add(v.toI(size)))
+        println("running meanshift")
         hm.run(s.map(_.toI(size)))
+
+        println("running hashmap")
+        println("total mass of meanshift segments: "+hm.pointWeights.map(_._2).sum)
+
+        hmhm.run(s.map(_.toI(size)))
+
+        println("distance between implementations: "+distance4d(hm.pointWeights, hmhm.gradientHashMap))
       }
 
       time("rendering") {
@@ -224,8 +237,7 @@ object MeanShift {
     newMeans
   }
 
-  def meanShift4D(pts: Seq[V4DD]) = {
-    val windowSize = 50.0
+  def meanShift4D(windowSize: Double, pts: Seq[V4DD]) = {
     var newPts = pts
 
 

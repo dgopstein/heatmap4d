@@ -223,7 +223,7 @@ object ShowImage {
   }
 
   def saveImage(img: BufferedImage, path: String) =
-    ImageIO.write(img, "png", new File(path))
+    ImageIO.write(img, "png", new File("output/"+path))
 
   def readImage(path: String) =
     ImageIO.read(new java.io.File(path))
