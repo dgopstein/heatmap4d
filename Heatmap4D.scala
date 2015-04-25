@@ -204,12 +204,16 @@ object Heatmap4D {
 
 }
 
+import scala.annotation.tailrec
 object MeanShift {
+
+  /*
   def sum4D(pts: Seq[V4DD]) = {
-    def sum1(pts1: Seq[V4DD], sumV: V4DD): V4DD = {
-      val V4DD(a1, b1, c1, d1) = sumV
+    @tailrec def sum1(pts1: Seq[V4DD], sumV: V4DD): V4DD = {
+      val V4DD(a1, b1, c1, d1, n1) = sumV
       pts1 match {
-        case V4DD(a, b, c, d) #:: xs => sum1(xs, V4DD(a + a1, b + b1, c + c1, d + d1))
+        case V4DD(a, b, c, d, n) #:: xs => sum1(xs, V4DD(n*a + a1, n*b + b1, n*c + c1, n*d + d1, n + n1))
+        case V4DD(a, b, c, d, n) :: xs => sum1(xs, V4DD(n*a + a1, n*b + b1, n*c + c1, n*d + d1, n + n1))
         case Nil => sumV
       }
     }
@@ -218,14 +222,31 @@ object MeanShift {
   }
 
   def mean4D(pts: Seq[V4DD]) = {
-    val size = pts.size
-    val V4DD(a, b, c, d) = sum4D(pts)
-    V4DD(a / size, b / size, c / size, d / size)
+    val V4DD(a, b, c, d, n) = sum4D(pts)
+    V4DD(a / n, b / n, c / n, d / n)
+  }
+  */
+  def mean4D(pts: Seq[V4DD]) = {
+    var sumA = 0d
+    var sumB = 0d
+    var sumC = 0d
+    var sumD = 0d
+    var sumN = 0
+
+    for (pt <- pts) {
+      sumA += pt.a * pt.count
+      sumB += pt.b * pt.count
+      sumC += pt.c * pt.count
+      sumD += pt.d * pt.count
+      sumN += pt.count
+    }
+
+    V4DD(sumA/sumN, sumB/sumN, sumC/sumN, sumD/sumN)
   }
 
   def variance4D(pts: Seq[V4DD]) = {
-    val mean = mean4D(pts)
-    val errs = pts.map(_.dist(mean))
+    val mean = time("mean") {mean4D(pts)}
+    val errs = time("errors"){pts.map(_.manhattanDist(mean))}
     val variance = errs.sum / errs.size
     variance
   }
@@ -233,9 +254,19 @@ object MeanShift {
   // Selects the node in question along with others
   // Likely selects a->b as well as b->a (depending on how its called
   def inWindow(pts: Seq[V4DD], pt: V4DD, windowSize: Double) = pts.filter(_.dist(pt) < windowSize)
+  def inWindowKD(pts: KdTree, pt: V4DD, windowSize: Double) = {
+
+    val windowPts = pts.radiusQuery(pt, windowSize)
+
+    //println("window points: "+windowPts)
+
+    windowPts
+  }
 
   def meanShiftStep4D(windowSize: Double, pts: Seq[V4DD]) = {
-    val windows = pts.map(pt => inWindow(pts, pt, windowSize))
+    lazy val ptsKd = KdTree(pts)
+    val windows = pts.map(pt => inWindowKD(ptsKd, pt, windowSize))
+    //val windows = pts.map(pt => inWindow(pts, pt, windowSize))
     val newMeans = windows.map(mean4D)
 
     newMeans
@@ -244,17 +275,22 @@ object MeanShift {
   def meanShift4D(windowSize: Double, pts: Seq[V4DD]) = {
     var newPts = pts
 
-
     var oldVariance = 0.0
     var varianceDelta = 99999999d
     for (i <- 0 to 9 if Math.abs(varianceDelta) > 0.000001) {
-      val variance = variance4D(newPts)
-      varianceDelta = oldVariance - variance
-      oldVariance = variance
 
-      println(s"[$i] varianceDelta: "+varianceDelta)
+      time(" ") {
+        val variance = variance4D(newPts)
+        varianceDelta = oldVariance - variance
+        oldVariance = variance
 
-      newPts = meanShiftStep4D(windowSize, newPts)
+
+        print(s"[$i] varianceDelta: " + varianceDelta)
+      }
+
+      time(s"[$i] meanShift") {
+        newPts = meanShiftStep4D(windowSize, newPts) //TODO make sure this doesn't return a Stream... they're slow
+      }
     }
 
     newPts

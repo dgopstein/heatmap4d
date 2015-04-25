@@ -12,7 +12,7 @@ trait V4D[T] {
   val c: T
   val d: T
 
-  def toSeq: Seq[T] = Seq(a, b, c, d)
+  val toSeq: Seq[T] = Seq(a, b, c, d)
 
   def dist(other: V4D[T]): Double
 }
@@ -22,8 +22,9 @@ case class V4DI(a: Int, b: Int, c: Int, d: Int) extends V4D[Int] {
   lazy val toV4DD = V4DD(a, b, c, d)
 }
 
-case class V4DD(a: Double, b: Double, c: Double, d: Double) extends V4D[Double]  {
+case class V4DD(a: Double, b: Double, c: Double, d: Double, count: Int = 1) extends V4D[Double]  {
   def dist(other: V4D[Double]) = sqrt(toSeq.zip(other.toSeq).map{case (x, y) => sqr(y - x)}.sum)
+  def manhattanDist(o: V4D[Double]) = Math.abs(a - o.a) + Math.abs(b - o.b) + Math.abs(c - o.c) + Math.abs(d - o.d)
 
   def toI(size: Int) = {
     val d2i = gend2i(size)
@@ -87,7 +88,7 @@ object HeatmapLib {
 
     val g2d = img.createGraphics()
     g2d.setBackground(Color.getHSBColor(0,0,0))
-    points.foreach { case V4DD(a, b, c, d) =>
+    points.foreach { case V4DD(a, b, c, d, _) =>
       g2d.setColor(Color.getHSBColor(0f, 1f, 0f))
       g2d.setStroke(new BasicStroke(1))
       g2d.drawLine(d2i(a), d2i(b), d2i(c), d2i(d))

@@ -47,7 +47,7 @@ case class Node(depth: Int, left: Option[KdTree], right: Option[KdTree]) extends
   //}
 }
 
-case class Leaf(point: V4DD) extends KdTree {
+case class Leaf(point: V4DD, count: Int = 1) extends KdTree {
   def radiusQuery(center: V4DD, radius: Double): Seq[V4DD] =
     if (isContained(center, radius)) Seq(center) else Nil
 
@@ -72,16 +72,34 @@ object KdTree {
     sorted(sorted.size/2)
   }
 
-  private def buildKdTree(points: Seq[V4DD], depth: Int = 0): KdTree = {
-    if (points.size == 1) {
-      Leaf(points(0))
+  // to keep points in general position
+  def purturb(a: Seq[V4DD]) =
+    a.map{case V4DD(a, b, c, d, n) => V4DD(a, b, c, d + 0.00000001 * Math.random(), n)}
+
+  def apply(points: Seq[V4DD]) = buildKdTree(purturb(points), 0)
+
+  def shortcutEquality[T](a: Seq[T], b: Seq[T]) = a.zip(b).forall(t => t._1 == t._2)
+
+  def undup(a: Seq[V4DD]): Seq[V4DD] = a.groupBy(identity).map{case (k, v) => V4DD(k.a, k.b, k.c, k.d, v.size)}.toSeq
+
+  private def buildKdTree(points: Seq[V4DD], depth: Int): KdTree = {
+//    List(V4DD(602.0,551.0,602.0,551.0), V4DD(602.0,551.0,602.0,551.0), V4DD(607.0,553.0,607.0,553.0), V4DD(602.0,551.0,602.0,551.0))
+//    println(points.toList)
+
+    if (points.tail.isEmpty) {
+      Leaf(points.head)
     } else {
       val axisGetter = getAxisGetter(depth)
 
-      val median = approxMedian(axisGetter, points)
+      lazy val median = approxMedian(axisGetter, points)
 
+      //val (lowerDups, upperDups) =
       val (lower, upper) =
         points.partition(p => axisGetter(p) < axisGetter(median))
+
+      //val lower = if (shortcutEquality(points, lowerDups)) undup(lowerDups) else lowerDups
+      //val upper = if (shortcutEquality(points, upperDups)) undup(upperDups) else upperDups
+
       val left = if (lower.nonEmpty) Some(buildKdTree(lower, depth + 1)) else None
       val right = if (upper.nonEmpty) Some(buildKdTree(upper, depth + 1)) else None
 
@@ -90,6 +108,6 @@ object KdTree {
   }
 
   def test = {
-    KdTree.buildKdTree(Seq(V4DD(1, 2, 3, 4), V4DD(1, 1, 1, 1), V4DD(2, 2, 2, 2), V4DD(1, 1, 2, 2)))
+    KdTree(Seq(V4DD(1, 2, 3, 4), V4DD(1, 1, 1, 1), V4DD(2, 2, 2, 2), V4DD(1, 1, 2, 2)))
   }
 }
