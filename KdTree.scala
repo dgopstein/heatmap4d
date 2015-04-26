@@ -7,29 +7,36 @@ trait KdTree {
 
   def radiusQuery(center: V4DD, radius: Double): Seq[V4DD]
 
-  def isContained(center: V4DD, radius: Double): Boolean
+  //def isContained(center: V4DD, radius: Double): Boolean
   def isIntersected(center: V4DD, radius: Double): Boolean
 
   def toSeq: Seq[V4DD]
 }
 
 
-case class Node(depth: Int, left: Option[KdTree], right: Option[KdTree]) extends KdTree {
+case class Node(depth: Int, median: V4DD, left: Option[KdTree], right: Option[KdTree]) extends KdTree {
   val axisGetter = getAxisGetter(depth)
 
-  def isContained(center: V4DD, radius: Double): Boolean =
-    left.map(_.isContained(center, radius)).getOrElse(true) &&
-    right.map(_.isContained(center, radius)).getOrElse(true)
+  //def isContained(center: V4DD, radius: Double): Boolean =
+  //  left.map(_.isContained(center, radius)).getOrElse(true) &&
+  //  right.map(_.isContained(center, radius)).getOrElse(true)
 
   def isIntersected(center: V4DD, radius: Double): Boolean =
-    left.exists(_.isIntersected(center, radius)) ||
-    right.exists(_.isIntersected(center, radius))
+    center.dist(median) < radius // Speed up by doing an axis-only comparison?
 
   def radiusQuery(center: V4DD, radius: Double): Seq[V4DD] = {
-    val newLeft =
-      if ( left.exists(_.isContained(center, radius))) left.toSeq.flatMap(_.toSeq) else left.toSeq.flatMap(_.radiusQuery(center, radius))
-    val newRight =
-      if (right.exists(_.isContained(center, radius))) right.toSeq.flatMap(_.toSeq) else right.toSeq.flatMap(_.radiusQuery(center, radius))
+    val (newLeft, newRight) =
+      if (axisGetter(center) + radius < axisGetter(median)) {
+        //println(s"[${depth%4}] ${center} -> left@${median}")
+        (left.toSeq.flatMap(_.radiusQuery(center, radius)), Nil)
+      } else if (axisGetter(center) - radius > axisGetter(median)) {
+        //println(s"[${depth%4}] ${center} -> right@${median}")
+        (Nil, right.toSeq.flatMap(_.radiusQuery(center, radius)))
+      } else {
+        //println(s"[${depth%4}] ${center} -> splitting@${median}")
+        (left.toSeq.flatMap(_.radiusQuery(center, radius)),
+          right.toSeq.flatMap(_.radiusQuery(center, radius)))
+      }
 
     newLeft ++ newRight
   }
@@ -49,10 +56,16 @@ case class Node(depth: Int, left: Option[KdTree], right: Option[KdTree]) extends
 
 case class Leaf(point: V4DD, count: Int = 1) extends KdTree {
   def radiusQuery(center: V4DD, radius: Double): Seq[V4DD] =
-    if (isContained(center, radius)) Seq(center) else Nil
+    if (isContained(center, radius)) {
+      //println("Leaf.isContained: "+point);
+      Seq(point)
+    } else {
+      //println("Leaf.isContained: "+false);
+      Nil
+    }
 
   def isContained(center: V4DD, radius: Double) =
-    center.dist(point) < radius && center.dist(point) < radius
+    center.dist(point) < radius
 
   def isIntersected(center: V4DD, radius: Double) = isContained(center, radius)
 
@@ -76,7 +89,7 @@ object KdTree {
   def purturb(a: Seq[V4DD]) =
     a.map{case V4DD(a, b, c, d, n) => V4DD(a, b, c, d + 0.00000001 * Math.random(), n)}
 
-  def apply(points: Seq[V4DD]) = buildKdTree(purturb(points), 0)
+  def apply(points: Seq[V4DD]) = buildKdTree(points, 0)
 
   def shortcutEquality[T](a: Seq[T], b: Seq[T]) = a.zip(b).forall(t => t._1 == t._2)
 
@@ -103,11 +116,20 @@ object KdTree {
       val left = if (lower.nonEmpty) Some(buildKdTree(lower, depth + 1)) else None
       val right = if (upper.nonEmpty) Some(buildKdTree(upper, depth + 1)) else None
 
-      Node(depth, left, right)
+      Node(depth, median, left, right)
     }
   }
 
   def test = {
-    KdTree(Seq(V4DD(1, 2, 3, 4), V4DD(1, 1, 1, 1), V4DD(2, 2, 2, 2), V4DD(1, 1, 2, 2)))
+    val kd = KdTree(Seq(V4DD(1, 2, 3, 4), V4DD(1, 1, 1, 1), V4DD(2, 2, 2, 2), V4DD(1, 1, 2, 2)))
+
+    Seq(
+      kd.radiusQuery(V4DD(1,1,1,1), 1.0) == List(V4DD(1.0,1.0,1.0,1.0,1)),
+      kd.radiusQuery(V4DD(1,1,1,1), 4.0) == List(V4DD(1.0,1.0,1.0,1.0,1), V4DD(1.0,1.0,2.0,2.0,1), V4DD(2.0,2.0,2.0,2.0,1), V4DD(1.0,2.0,3.0,4.0,1)),
+      kd.radiusQuery(V4DD(1,1,1,1), 3.0) == List(V4DD(1.0,1.0,1.0,1.0,1), V4DD(1.0,1.0,2.0,2.0,1), V4DD(2.0,2.0,2.0,2.0,1)),
+      kd.radiusQuery(V4DD(1,1,1,1), 2.0) == List(V4DD(1.0,1.0,1.0,1.0,1), V4DD(1.0,1.0,2.0,2.0,1))
+    ).foreach(println)
+
+    kd
   }
 }

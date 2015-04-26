@@ -96,7 +96,7 @@ case class Heatmap4DMeanShift(size: Int) extends HeatmapLib(size) {
     //gradientHashMap = MeanShift.meanShift4D(points.map(_.toV4DD)).groupBy(identity).map{case (k,v) => k.toV4DI -> v.size.toDouble}
 
     // Multiple lines per cluster
-    gradientHashMap = points.zip(MeanShift.meanShift4D(radius, points.map(_.toV4DD))).groupBy(_._2)
+    gradientHashMap = points.zip(MeanShift.meanShift4D(radius, points.toVector.map(_.toV4DD))).groupBy(_._2)
       .flatMap{case (k: V4DD, pairs: Seq[(V4DI, V4DD)]) => pairs.map{_._1 -> pairs.size.toDouble}}
 
     maxValue = gradientHashMap.values.max
@@ -247,7 +247,7 @@ object MeanShift {
   def variance4D(pts: Seq[V4DD]) = {
     val mean = time("mean") {mean4D(pts)}
     val errs = time("errors"){pts.map(_.manhattanDist(mean))}
-    val variance = errs.sum / errs.size
+    val variance = time("sum") { errs.sum / errs.size }
     variance
   }
 
@@ -264,10 +264,13 @@ object MeanShift {
   }
 
   def meanShiftStep4D(windowSize: Double, pts: Seq[V4DD]) = {
-    lazy val ptsKd = KdTree(pts)
-    val windows = pts.map(pt => inWindowKD(ptsKd, pt, windowSize))
+    val ptsKd = time("kdtree: ") { KdTree(KdTree.purturb(pts)) }
+    val windows = time("windows: ") {
+      pts.map(pt => inWindowKD(ptsKd, pt, windowSize)) // {10k: 110s, 5k: 34}
+      //pts.map(pt => inWindow(pts, pt, windowSize)) // {10k: 24s, 5k: 6s} n^2
+    }
     //val windows = pts.map(pt => inWindow(pts, pt, windowSize))
-    val newMeans = windows.map(mean4D)
+    val newMeans = time("new means: ") { windows.map(mean4D) }
 
     newMeans
   }
@@ -288,8 +291,10 @@ object MeanShift {
         print(s"[$i] varianceDelta: " + varianceDelta)
       }
 
+      val newVectorPts = time("toVector") { pts.toVector }
+
       time(s"[$i] meanShift") {
-        newPts = meanShiftStep4D(windowSize, newPts) //TODO make sure this doesn't return a Stream... they're slow
+        newPts = meanShiftStep4D(windowSize, newVectorPts) //TODO make sure this doesn't return a Stream... they're slow
       }
     }
 
