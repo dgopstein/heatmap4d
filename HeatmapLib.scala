@@ -111,7 +111,9 @@ abstract class HeatmapLib(size: Int) {
 
   val maxMagnitude = sqrt(sqr(width) + sqr(height))
 
-  val radius = (size * .005).round.toInt
+  val radiusPct: Double
+  val radius = (size * radiusPct).round.toInt
+  //val radius
 
   def gradientValue(p1: V4DI, p2: V4DI): Int = {
     //val colorDepth = radius
@@ -158,11 +160,17 @@ abstract class HeatmapLib(size: Int) {
     val g2d = img.createGraphics()
     g2d.setBackground(Color.getHSBColor(0, 0, 0))
     sorted.foreach { case (V4DI(a, b, c, d), weight) =>
-      val intensity = 1 - (weight / maxValue.toDouble)
-      g2d.setColor(Color.getHSBColor((1.0-intensity).toFloat % 1f, (0.75 - 0.5*intensity).toFloat, intensity.toFloat))
+      val norm = Math.log10 _
+      val intensity = 1 - (norm(weight) / norm(maxValue.toDouble))
+      val color1 = Color.getHSBColor((1.0-intensity).toFloat % 1f, (0.75 - 0.5*intensity).toFloat, intensity.toFloat)
+      val color = new Color(color1.getRed, color1.getGreen, color1.getBlue, ((1f-.7*intensity) * 255).toInt)
+      g2d.setColor(color)
       g2d.setStroke(new BasicStroke(1))
       g2d.drawLine(a, b, c, d)
     }
+
+    g2d.setColor(Color.black)
+    g2d.drawOval((radius*1.5).toInt, (radius*1.5).toInt, radius, radius)
 
     img
   }

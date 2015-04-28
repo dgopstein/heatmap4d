@@ -6,7 +6,7 @@ import heatmap4d.HeatmapLib._
 import Heatmap4D._
 import java.awt.image.BufferedImage
 
-case class Heatmap4DBruteForce(size: Int) extends HeatmapLib(size) {
+case class Heatmap4DBruteForce(size: Int, radiusPct: Double) extends HeatmapLib(size) {
   def run(points: Seq[V4DI]) = {
     def sliceX(x: Int) = (Seq(0, x - radius).max, Seq(width, x + radius).min)
     def sliceY(y: Int) = (Seq(0, y - radius).max, Seq(height, y + radius).min)
@@ -31,7 +31,7 @@ case class Heatmap4DBruteForce(size: Int) extends HeatmapLib(size) {
   }
 }
 
-case class Heatmap4DBruteImperative(size: Int) extends HeatmapLib(size) {
+case class Heatmap4DBruteImperative(size: Int, radiusPct: Double) extends HeatmapLib(size) {
   import Math.{min, max}
   def run(points: Seq[V4DI]) = {
 
@@ -53,7 +53,7 @@ case class Heatmap4DBruteImperative(size: Int) extends HeatmapLib(size) {
   }
 }
 
-case class Heatmap4DHashMap(size: Int) extends HeatmapLib(size) {
+case class Heatmap4DHashMap(size: Int, radiusPct: Double) extends HeatmapLib(size) {
   import Math.{min, max}
 
   val gradientHashMap = new collection.mutable.HashMap[V4DI, Double]() { override def default(key: V4DI) = 0.0 }
@@ -82,7 +82,7 @@ case class Heatmap4DHashMap(size: Int) extends HeatmapLib(size) {
 }
 
 
-case class Heatmap4DMeanShift(size: Int) extends HeatmapLib(size) {
+case class Heatmap4DMeanShift(size: Int, radiusPct: Double) extends HeatmapLib(size) {
 
   import Math.{min, max}
 
@@ -104,7 +104,7 @@ case class Heatmap4DMeanShift(size: Int) extends HeatmapLib(size) {
 }
 
 // http://web.archive.org/web/20060718054020/http://www.acm.uiuc.edu/siggraph/workshops/wjarosz_convolution_2001.pdf
-case class Heatmap4DConvolution(size: Int) extends HeatmapLib(size) {
+case class Heatmap4DConvolution(size: Int, radiusPct: Double) extends HeatmapLib(size) {
 
   import Math.{min, max}
   def run(points: Seq[V4DI]) = {
@@ -143,13 +143,21 @@ object Heatmap4D {
     ShowImage.diffImages(ShowImage.readImage(""), img)
 
   def main(args: Array[String]) {
-    val s =
-      if (args.isEmpty) {
-        samples
-      } else {
-        io.Source.fromFile(args(0)).getLines().map(_.split(',').map(_.toDouble)).toSeq
-          .map{case Array(a,b,c,d) => V4DD(a,b,c,d)}.toSeq
+    def fileToV4DDs(filename: String) =
+      io.Source.fromFile(filename).getLines()
+        .map(_.split (',').map(_.toDouble)).toSeq.map {
+        case Array (a, b, c, d) => V4DD (a, b, c, d)
+      }.toSeq
+
+    val (s, radiusPct) =
+      args match {
+        case Array() => samples -> 0.05
+        case Array(filename) => fileToV4DDs(filename) -> 0.05
+        case Array(filename, rpct) => fileToV4DDs(filename) -> rpct.toDouble
       }
+
+
+
 
     val size = 1000
     println(s"image size: " + size + "^4")
@@ -162,8 +170,8 @@ object Heatmap4D {
     //val hm = Heatmap4DBruteForce(size, size)       // O(p*r^4)
     //val hm = Heatmap4DBruteImperative(size, size)  // O(p*r^4)
     //val hm = Heatmap4DConvolution(size)          // O(n^4*r^4)
-    val hmhm = Heatmap4DHashMap(size)
-    val hm = Heatmap4DMeanShift(size)
+    val hmhm = Heatmap4DHashMap(size, radiusPct)
+    val hm = Heatmap4DMeanShift(size, radiusPct)
 
     def meanSquareError(pointWeights: Seq[(V4DI, Double)], array4d: collection.mutable.HashMap[V4DI, Double]) = {
       // min is assumed to be 0
@@ -245,9 +253,12 @@ object MeanShift {
   }
 
   def variance4D(pts: Seq[V4DD]) = {
-    val mean = time("mean") {mean4D(pts)}
-    val errs = time("errors"){pts.map(_.manhattanDist(mean))}
-    val variance = time("sum") { errs.sum / errs.size }
+    val mean = //time("mean") {
+      mean4D(pts)//}
+    val errs = //time("errors"){
+      pts.map(_.manhattanDist(mean))//}
+    val variance = //time("sum") {
+        errs.sum / errs.size //}
     variance
   }
 
@@ -264,13 +275,13 @@ object MeanShift {
   }
 
   def meanShiftStep4D(windowSize: Double, pts: Seq[V4DD]) = {
-    val ptsKd = time("kdtree: ") { KdTree(KdTree.purturb(pts)) }
-    val windows = time("windows: ") {
+    val ptsKd = /*time("kdtree: ") {*/ KdTree(KdTree.purturb(pts)) //}
+    val windows = //time("windows: ") {
       pts.map(pt => inWindowKD(ptsKd, pt, windowSize)) // {10k: 110s, 5k: 34}
       //pts.map(pt => inWindow(pts, pt, windowSize)) // {10k: 24s, 5k: 6s} n^2
-    }
+    //}
     //val windows = pts.map(pt => inWindow(pts, pt, windowSize))
-    val newMeans = time("new means: ") { windows.map(mean4D) }
+    val newMeans = /*time("new means: ") {*/ windows.map(mean4D) //}
 
     newMeans
   }
@@ -291,10 +302,8 @@ object MeanShift {
         print(s"[$i] varianceDelta: " + varianceDelta)
       }
 
-      val newVectorPts = time("toVector") { pts.toVector }
-
       time(s"[$i] meanShift") {
-        newPts = meanShiftStep4D(windowSize, newVectorPts) //TODO make sure this doesn't return a Stream... they're slow
+        newPts = meanShiftStep4D(windowSize, pts) //TODO make sure this doesn't return a Stream... they're slow
       }
     }
 
