@@ -6,12 +6,8 @@ function initMap() {
         //source: new ol.source.OSM(),
         source: new ol.source.XYZ({
             url: 'http://api.tiles.mapbox.com/v4/dgopstein.18df0fc9/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoiZGdvcHN0ZWluIiwiYSI6IkNNaFFYODAifQ.RO5unyKLMcbB-BPHdxer_w',
-
-            //crossOriginKeyword: 'anonymous',
           }),
-        //crossOriginKeyword: 'anonymous',
-        //tileOptions: {crossOriginKeyword: 'anonymous'}
-      }, { tileOptions: {crossOriginKeyword: 'anonymous'} });
+      });
 
 
   map = new ol.Map({
@@ -20,7 +16,7 @@ function initMap() {
     controls:
       ol.control.defaults({}),
     view: new ol.View({
-      center: ol.proj.transform([-73.95, 40.75], 'EPSG:4326', 'EPSG:3857'),
+      center: transform([-73.95, 40.75]),
       zoom: 13
     })
   });
@@ -31,17 +27,19 @@ function initMap() {
 
 function loadData() {
   //return JSON.parse(points);
-  return points.slice(0,10000);
+  var pts =  points.slice(0,10000);
+  var segments = pts.map(function(arr) {return [[arr[0],arr[1]], [arr[2],arr[3]]]});
+  return segments;
+}
+
+function transform(pt) {
+  return ol.proj.transform(pt, 'EPSG:4326', 'EPSG:3857');
 }
 
 function sourceFromSegments(arr) {
   var ptFeatures = arr.map(function(pair) {
-    var lat1 = pair[0];
-    var lng1 = pair[1];
-    var lat2 = pair[2];
-    var lng2 = pair[3];
-    var pt1 = ol.proj.transform([lng1, lat1], 'EPSG:4326', 'EPSG:3857');
-    var pt2 = ol.proj.transform([lng2, lat2], 'EPSG:4326', 'EPSG:3857');
+    var pt1 = transform(pair[0]);
+    var pt2 = transform(pair[1]);
     var segment = new ol.geom.LineString([pt1, pt2])
     
     return new ol.Feature({
@@ -57,13 +55,9 @@ function sourceFromSegments(arr) {
 }
 
 function sourceFromPoints(arr) {
-  var ptFeatures = arr.map(function(pair) {
-    var lat = pair[0];
-    var lng = pair[1];
-    //return new ol.Feature({geometry: new ol.geom.Point(lat,lng)});
-    
+  var ptFeatures = arr.map(function(pt) {
     return new ol.Feature({
-      geometry: new ol.geom.Point(ol.proj.transform([lng, lat], 'EPSG:4326', 'EPSG:3857'))
+      geometry: new ol.geom.Point(transform(pt))
     });
   });
   console.log(ptFeatures);

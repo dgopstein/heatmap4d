@@ -14,9 +14,9 @@ function drawPoints(arr) {
 function main() {
   initMap();
   setExportMapHandler();
-  var pts = loadData();
-  var startPoints = pts.map(function(arr) {return [arr[1],arr[0]]});
-  var endPoints = pts.map(function(arr) {return [arr[3],arr[2]]});
+  var sgmts = loadData();
+  var startPoints = sgmts.map(function(arr) {return arr[0]});
+  var endPoints = sgmts.map(function(arr) {return arr[1]});
 
   drawPoints(content !== 'end' ? startPoints : endPoints);
 }
