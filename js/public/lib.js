@@ -1,3 +1,7 @@
+var rgbaBlue = 'rgba(51, 153, 204, 1)'
+var rgbaRed = 'rgba(204, 81, 81, 1)'
+var rgbaPurple = 'rgba(116, 79, 196, 1)'
+var rgbaPurple2 = 'rgba(88, 61, 184, 1)'
 
 var map;
 function initMap() {

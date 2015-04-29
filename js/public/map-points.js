@@ -10,7 +10,7 @@ pointStyles = {
           color: 'rgba(255, 255, 255, .4)'
         }),
         stroke: new ol.style.Stroke({
-          color: 'rgba(51, 153, 204, 1)'
+          color: rgbaBlue
           ,width: 1.2
         })
     })}),
@@ -22,7 +22,7 @@ pointStyles = {
           color: 'rgba(255, 255, 255, .4)'
         }),
         stroke: new ol.style.Stroke({
-          color: 'rgba(51, 153, 204, 1)'
+          color: rgbaBlue
           ,width: 1.2
         })
       })
@@ -35,7 +35,7 @@ pointStyles = {
           color: 'rgba(255, 255, 255, .4)'
         }),
         stroke: new ol.style.Stroke({
-          color: 'rgba(204, 81, 81, 1)'
+          color: rgbaRed
           ,width: 1.2
         })
       })
