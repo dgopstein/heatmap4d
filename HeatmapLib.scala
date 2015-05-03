@@ -160,8 +160,9 @@ abstract class HeatmapLib(size: Int) {
     val g2d = img.createGraphics()
     g2d.setBackground(Color.getHSBColor(0, 0, 0))
     sorted.foreach { case (V4DI(a, b, c, d), weight) =>
-      val norm = Math.log10 _
+      def norm(x: Double) = Math.log10(1 + x)
       val intensity = 1 - (norm(weight) / norm(maxValue.toDouble))
+      //println("intensity: "+(intensity, norm(weight), norm(maxValue.toDouble)))
       val color1 = Color.getHSBColor((1.0-intensity).toFloat % 1f, (0.75 - 0.5*intensity).toFloat, intensity.toFloat)
       val color = new Color(color1.getRed, color1.getGreen, color1.getBlue, ((1f-.7*intensity) * 255).toInt)
       g2d.setColor(color)

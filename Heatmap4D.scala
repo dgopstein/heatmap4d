@@ -66,11 +66,11 @@ case class Heatmap4DHashMap(size: Int, radiusPct: Double) extends HeatmapLib(siz
 
       // Loop the area in the filter
       for {
-           x1 <- Range(max(0, startX-radius), min(width,  startX+radius))
-           y1 <- Range(max(0, startY-radius), min(height, startY+radius))
-           x2 <- Range(max(0, endX-radius),   min(width,  endX+radius))
-           y2 <- Range(max(0, endY-radius),   min(height, endY+radius))
-           } {
+        x1 <- Range(max(0, startX-radius), min(width,  startX+radius))
+        y1 <- Range(max(0, startY-radius), min(height, startY+radius))
+        x2 <- Range(max(0, endX-radius),   min(width,  endX+radius))
+        y2 <- Range(max(0, endY-radius),   min(height, endY+radius))
+      } {
 
         val vec = V4DI(x1, y1, x2, y2)
 
@@ -100,6 +100,68 @@ case class Heatmap4DMeanShift(size: Int, radiusPct: Double) extends HeatmapLib(s
       .flatMap{case (k: V4DD, pairs: Seq[(V4DI, V4DD)]) => pairs.map{_._1 -> pairs.size.toDouble}}
 
     maxValue = gradientHashMap.values.max
+  }
+}
+
+case class Heatmap4DOffsetHashes(size: Int, radiusPct: Double) extends HeatmapLib(size) {
+
+  import Math.{min, max}
+
+  var pointBucketWeights: Seq[(V4DI, Double)] = Seq()
+  override def pointWeights: Seq[(V4DI, Double)] = {
+    //println("pointBucketWeights.size: "+pointBucketWeights)
+    pointBucketWeights
+  }
+
+  val bucketMap = new collection.mutable.HashMap[Bucket, Double]() {
+    override def default(key: Bucket) = 0.0
+  }
+
+  case class Bucket(a: Int, b: Int, c: Int, d: Int) {
+    val center = {
+      def scale(i: Int) = (i * Bucket.size) - (Bucket.size / 2)
+      val center = V4DI(scale(a), scale(b), scale(c), scale(d))
+//      println("bucket -> center: "+(this, center))
+      center
+    }
+  }
+  object Bucket {
+    val size = radius
+  }
+
+  def bucket(pt: V4DI): Bucket = pt match {
+    case V4DI(a, b, c, d) =>
+      Bucket(a / Bucket.size, b / Bucket.size, c / Bucket.size, d / Bucket.size)
+  }
+
+  // every offset from a point in which it should be inserted
+  def bucketOffsets = Seq(1,1,1,1,0,0,0,0).combinations(4).flatMap(_.permutations)
+
+  def buckets(pt: V4DI): Iterator[Bucket] = bucket(pt) match {
+    case Bucket(a, b, c, d) => bucketOffsets.map {
+      case List(oA, oB, oC, oD) => Bucket(a + oA, b + oB, c + oC, d + oD)
+    }
+  }
+
+  def run(points: Seq[V4DI]) = {
+
+    // Loop all points
+    for (p@V4DI(startX, startY, endX, endY) <- points) {
+      //println("p -> bucket: "+(p, bucket(p)))
+      buckets(p).foreach{ bucket =>
+        //println("p -> value: "+(p, bucket.center, radius, p.dist(bucket.center)))
+        bucketMap(bucket) += max(radius - p.dist(bucket.center), 0)
+//          bucketMap(bucket) += p.dist(bucket.center)
+
+          maxValue = max(maxValue, bucketMap(bucket))
+        }
+
+    }
+
+    pointBucketWeights = points.map{ case p@V4DI(startX, startY, endX, endY) =>
+      //println("p -> map: "+(p, bucketMap(bucket(p))))
+      p -> bucketMap(bucket(p))
+    }
   }
 }
 
@@ -171,7 +233,8 @@ object Heatmap4D {
     //val hm = Heatmap4DBruteImperative(size, size)  // O(p*r^4)
     //val hm = Heatmap4DConvolution(size)          // O(n^4*r^4)
     val hmhm = Heatmap4DHashMap(size, radiusPct)
-    val hm = Heatmap4DMeanShift(size, radiusPct)
+    //val hm = Heatmap4DMeanShift(size, radiusPct)
+    val hm = Heatmap4DOffsetHashes(size, radiusPct)
 
     def meanSquareError(pointWeights: Seq[(V4DI, Double)], array4d: collection.mutable.HashMap[V4DI, Double]) = {
       // min is assumed to be 0
@@ -191,7 +254,6 @@ object Heatmap4D {
       ShowImage.showImage(pointsToImg(size, s))
 
       time("adding") {
-        println("running meanshift")
         hm.run(s.map(_.toI(size)))
 
         //println("running hashmap")
