@@ -103,7 +103,7 @@ case class Heatmap4DMeanShift(size: Int, radiusPct: Double) extends HeatmapLib(s
   }
 }
 
-case class Heatmap4DOffsetHashes(size: Int, radiusPct: Double) extends HeatmapLib(size) {
+case class Heatmap4DBucketGrid(size: Int, radiusPct: Double) extends HeatmapLib(size) {
 
   import Math.{min, max}
 
@@ -126,7 +126,7 @@ case class Heatmap4DOffsetHashes(size: Int, radiusPct: Double) extends HeatmapLi
     }
   }
   object Bucket {
-    val size = radius
+    val size = ((2/3d) * radius).toInt
   }
 
   def bucket(pt: V4DI): Bucket = pt match {
@@ -211,11 +211,22 @@ object Heatmap4D {
         case Array (a, b, c, d) => V4DD (a, b, c, d)
       }.toSeq
 
-    val (s, radiusPct) =
+
+    val classMap = Map(
+      "BruteForce" -> Heatmap4DBruteForce,
+      "BruteImperative" -> Heatmap4DBruteImperative,
+      "Convolution" -> Heatmap4DConvolution,
+      "HashMap" -> Heatmap4DHashMap,
+      "MeanShift" -> Heatmap4DMeanShift,
+      "BucketGrid" -> Heatmap4DBucketGrid)
+
+    val algoName = args(0)
+
+    val (algo, s, radiusPct) =
       args match {
-        case Array() => samples -> 0.05
-        case Array(filename) => fileToV4DDs(filename) -> 0.05
-        case Array(filename, rpct) => fileToV4DDs(filename) -> rpct.toDouble
+        case Array(a) => (classMap(a), samples, 0.05)
+        case Array(a, filename) => (classMap(a), fileToV4DDs(filename), 0.05)
+        case Array(a, filename, rpct) => (classMap(a), fileToV4DDs(filename), rpct.toDouble)
       }
 
 
@@ -232,9 +243,10 @@ object Heatmap4D {
     //val hm = Heatmap4DBruteForce(size, size)       // O(p*r^4)
     //val hm = Heatmap4DBruteImperative(size, size)  // O(p*r^4)
     //val hm = Heatmap4DConvolution(size)          // O(n^4*r^4)
-    val hmhm = Heatmap4DHashMap(size, radiusPct)
+    //val hmhm = Heatmap4DHashMap(size, radiusPct)
     //val hm = Heatmap4DMeanShift(size, radiusPct)
-    val hm = Heatmap4DOffsetHashes(size, radiusPct)
+    //val hm = Heatmap4DBucketGrid(size, radiusPct)
+    val hm = algo(size, radiusPct)
 
     def meanSquareError(pointWeights: Seq[(V4DI, Double)], array4d: collection.mutable.HashMap[V4DI, Double]) = {
       // min is assumed to be 0
@@ -264,7 +276,7 @@ object Heatmap4D {
 
       time("rendering") {
 
-        val filename = s"heatmap4d_${size}_${s.size}_${hm.radius}_${System.currentTimeMillis / 1000}"
+        val filename = s"heatmap4d_${algoName}_${size}_${s.size}_${hm.radius}_${System.currentTimeMillis / 1000}"
         //reflect.io.File(filename+".json").writeAll(arrayToJson(hm.gradientMap))
         ShowImage.saveImage(hm.toImage, filename+".png")
         ShowImage.showImage(hm.toImage)
