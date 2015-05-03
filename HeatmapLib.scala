@@ -175,6 +175,10 @@ abstract class HeatmapLib(size: Int) {
 
     img
   }
+
+  def toJson = {
+    poin
+  }
 }
 
 
@@ -182,7 +186,13 @@ abstract class HeatmapLib(size: Int) {
 
 
 
-
+object Printer {
+  // http://stackoverflow.com/questions/4604237/how-to-write-to-a-file-in-scala
+  def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit) {
+    val p = new java.io.PrintWriter(f)
+    try { op(p) } finally { p.close() }
+  }
+}
 
 
 
@@ -233,7 +243,7 @@ object ShowImage {
   }
 
   def saveImage(img: BufferedImage, path: String) =
-    ImageIO.write(img, "png", new File("output/"+path))
+    ImageIO.write(img, "png", new File(path))
 
   def readImage(path: String) =
     ImageIO.read(new java.io.File(path))

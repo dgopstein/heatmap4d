@@ -276,8 +276,10 @@ object Heatmap4D {
 
       time("rendering") {
 
-        val filename = s"heatmap4d_${algoName}_${size}_${s.size}_${hm.radius}_${System.currentTimeMillis / 1000}"
+        val filename = s"output/heatmap4d_${algoName}_${size}_${s.size}_${hm.radius}_${System.currentTimeMillis / 1000}"
         //reflect.io.File(filename+".json").writeAll(arrayToJson(hm.gradientMap))
+
+        Printer.printToFile(new java.io.File(filename+".json")) { _.write(hm.toJson) }
         ShowImage.saveImage(hm.toImage, filename+".png")
         ShowImage.showImage(hm.toImage)
       }
