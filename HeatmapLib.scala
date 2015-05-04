@@ -150,9 +150,13 @@ abstract class HeatmapLib(size: Int) {
     weights
   }
 
-  def weightToColor(weight: Double) = {
+  def weightToIntensity(weight: Double) = {
     def norm(x: Double) = Math.log10(1 + x)
-    val intensity = 1 - (norm(weight) / norm(maxValue.toDouble))
+    1 - (norm(weight) / norm(maxValue.toDouble))
+  }
+
+  def weightToColor(weight: Double) = {
+    val intensity = weightToIntensity(weight)
     //println("intensity: "+(intensity, norm(weight), norm(maxValue.toDouble)))
     val color1 = Color.getHSBColor((1.0-intensity).toFloat % 1f, (0.75 - 0.5*intensity).toFloat, intensity.toFloat)
     val color = new Color(color1.getRed, color1.getGreen, color1.getBlue, ((1f-.7*intensity) * 255).toInt)
@@ -191,9 +195,9 @@ abstract class HeatmapLib(size: Int) {
       s"'rgba(${c.getRed}, ${c.getBlue}, ${c.getGreen}, ${c.getAlpha / 255.0})'"
     }
 
-    pointWeightsD.map {
+    pointWeightsD.sortBy(_._2).map {
       //case (V4DI(a, b, c, d), w) => s"[[$a, $b], [$c, $d], $w]"
-      case (V4DD(a, b, c, d, _), w) => s"[[$a, $b], [$c, $d], ${weightToColorStr(w)}]"
+      case (V4DD(a, b, c, d, _), w) => s"[[$a, $b], [$c, $d], ${weightToIntensity(w)}]"
     }.mkString("[", ",\n", "]")
   }
 }

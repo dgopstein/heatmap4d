@@ -1,5 +1,5 @@
 //var Color = require("color");
-var Color = net.brehaut.Color;
+//var Color = net.brehaut.Color;
 
 var rgbaBlue = 'rgba(51, 153, 204, 1)'
 var rgbaRed = 'rgba(204, 81, 81, 1)'
@@ -44,20 +44,19 @@ function transform(pt) {
 }
 
 function intensityColor(weight) {
-  var intensity = 1 - Math.log(weight)
+  var intensity = weight
 
-  //var rgbaRed = 'rgba(204, 81, 81, 1)'
-  var h = Math.abs((1.0-intensity) % 1.0);
-  var s = Math.abs(0.75 - 0.5*intensity);
-  var l = intensity;
-  var a = 1.0 - 0.7*intensity;
-  //return 'hsl('+h+','+s+','+l+')'//','+a+')'
-  //var c = Color();
-  //c.hue(h);
-  //c.saturation(s);
-  //c.lightness(l);
-  var c = Color({hue: 100*h, saturation: s, lightness: l});
-  c.setAlpha(a);
+// My own
+  //var h = (1.0-intensity) % 1.0;
+  //var s = 0.75 - 0.5*intensity;
+  //var l = intensity;
+  //var a = 1.0 - 0.7*intensity;
+
+// SO's
+  var h = intensity * 240
+  var a = (.03 * Math.log(5 - intensity))
+
+  var c = tinycolor({h: h, s: 1, l: .5, a: a});
   return c;
 }
 
@@ -72,10 +71,9 @@ function sourceFromSegments(arr) {
 
     var feature = new ol.Feature(ftObj);
     if (typeof(pair[2]) !=='undefined') {
-      //var color = intensityColor(pair[2])
+      var color = intensityColor(pair[2])
       //console.log("color: ", color);
-      //var colorStr = color.toCSS(1);
-      var colorStr = pair[2];
+      var colorStr = color.toRgbString();
       //console.log("color: ", colorStr);
       var style = new ol.style.Style({
             stroke: new ol.style.Stroke({
@@ -103,7 +101,7 @@ function sourceFromPoints(arr) {
       geometry: new ol.geom.Point(transform(pt))
     });
   });
-  console.log(ptFeatures);
+  //console.log(ptFeatures);
   var vectorSource = new ol.source.Vector({
     features: ptFeatures, //add an array of features
   });

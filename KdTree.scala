@@ -87,7 +87,7 @@ object KdTree {
 
   // to keep points in general position
   def purturb(a: Seq[V4DD]) =
-    a.map{case V4DD(a, b, c, d, n) => V4DD(a, b, c, d + 0.00000001 * Math.random(), n)}
+    a.map{case V4DD(a, b, c, d, n) => V4DD(a, b, c, d + 0.0000001 * Math.random(), n)}
 
   def apply(points: Seq[V4DD]) = buildKdTree(points, 0)
 
