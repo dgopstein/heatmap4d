@@ -106,6 +106,7 @@ abstract class HeatmapLib(size: Int) {
   val height = size
 
   def run(points: Seq[V4DI])
+  def runUnnormed(points: Seq[V4DD]) = run(points.map(_.toI(size)))
 
   var maxValue = 0d
 
@@ -134,6 +135,7 @@ abstract class HeatmapLib(size: Int) {
       Array.fill(width)(Array.fill(height)(0))
     })
 
+  def pointWeightsD = pointWeights.map(t => t._1.toV4DD -> t._2)
   def pointWeights: Seq[(V4DI, Double)] = {
     val weights = gradientMap.view./*par.*/zipWithIndex.flatMap { case (a, aI) =>
       if ( aI % 10 == 0 ) println("aI: "+aI);
@@ -148,6 +150,15 @@ abstract class HeatmapLib(size: Int) {
     weights
   }
 
+  def weightToColor(weight: Double) = {
+    def norm(x: Double) = Math.log10(1 + x)
+    val intensity = 1 - (norm(weight) / norm(maxValue.toDouble))
+    //println("intensity: "+(intensity, norm(weight), norm(maxValue.toDouble)))
+    val color1 = Color.getHSBColor((1.0-intensity).toFloat % 1f, (0.75 - 0.5*intensity).toFloat, intensity.toFloat)
+    val color = new Color(color1.getRed, color1.getGreen, color1.getBlue, ((1f-.7*intensity) * 255).toInt)
+    color
+  }
+
   def toImage = {
     val weights = pointWeights
 
@@ -160,11 +171,7 @@ abstract class HeatmapLib(size: Int) {
     val g2d = img.createGraphics()
     g2d.setBackground(Color.getHSBColor(0, 0, 0))
     sorted.foreach { case (V4DI(a, b, c, d), weight) =>
-      def norm(x: Double) = Math.log10(1 + x)
-      val intensity = 1 - (norm(weight) / norm(maxValue.toDouble))
-      //println("intensity: "+(intensity, norm(weight), norm(maxValue.toDouble)))
-      val color1 = Color.getHSBColor((1.0-intensity).toFloat % 1f, (0.75 - 0.5*intensity).toFloat, intensity.toFloat)
-      val color = new Color(color1.getRed, color1.getGreen, color1.getBlue, ((1f-.7*intensity) * 255).toInt)
+      val color = weightToColor(weight)
       g2d.setColor(color)
       g2d.setStroke(new BasicStroke(1))
       g2d.drawLine(a, b, c, d)
@@ -176,8 +183,18 @@ abstract class HeatmapLib(size: Int) {
     img
   }
 
+
+
   def toJson = {
-    poin
+    def weightToColorStr(weight: Double) = {
+      val c = weightToColor(weight)
+      s"'rgba(${c.getRed}, ${c.getBlue}, ${c.getGreen}, ${c.getAlpha / 255.0})'"
+    }
+
+    pointWeightsD.map {
+      //case (V4DI(a, b, c, d), w) => s"[[$a, $b], [$c, $d], $w]"
+      case (V4DD(a, b, c, d, _), w) => s"[[$a, $b], [$c, $d], ${weightToColorStr(w)}]"
+    }.mkString("[", ",\n", "]")
   }
 }
 

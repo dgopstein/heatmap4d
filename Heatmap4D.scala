@@ -104,11 +104,11 @@ case class Heatmap4DMeanShift(size: Int, radiusPct: Double) extends HeatmapLib(s
 }
 
 case class Heatmap4DBucketGrid(size: Int, radiusPct: Double) extends HeatmapLib(size) {
-
   import Math.{min, max}
 
-  var pointBucketWeights: Seq[(V4DI, Double)] = Seq()
-  override def pointWeights: Seq[(V4DI, Double)] = {
+  var pointBucketWeights: Seq[(V4DD, Double)] = Seq()
+  override def pointWeights: Seq[(V4DI, Double)] = pointBucketWeights.map(t => t._1.toI(size) -> t._2)
+  override def pointWeightsD: Seq[(V4DD, Double)] = {
     //println("pointBucketWeights.size: "+pointBucketWeights)
     pointBucketWeights
   }
@@ -120,37 +120,38 @@ case class Heatmap4DBucketGrid(size: Int, radiusPct: Double) extends HeatmapLib(
   case class Bucket(a: Int, b: Int, c: Int, d: Int) {
     val center = {
       def scale(i: Int) = (i * Bucket.size) - (Bucket.size / 2)
-      val center = V4DI(scale(a), scale(b), scale(c), scale(d))
+      val center = V4DD(scale(a), scale(b), scale(c), scale(d))
 //      println("bucket -> center: "+(this, center))
       center
     }
   }
   object Bucket {
-    val size = ((2/3d) * radius).toInt
+    val size = ((2/3d) * radiusPct)
   }
 
-  def bucket(pt: V4DI): Bucket = pt match {
-    case V4DI(a, b, c, d) =>
-      Bucket(a / Bucket.size, b / Bucket.size, c / Bucket.size, d / Bucket.size)
+  import Math.floor
+  def bucket[T](pt: V4D[T]): Bucket = pt match {
+    case V4DD(a, b, c, d, _) =>
+      Bucket(floor(a / Bucket.size).toInt, floor(b / Bucket.size).toInt, floor(c / Bucket.size).toInt, floor(d / Bucket.size).toInt)
   }
 
   // every offset from a point in which it should be inserted
   def bucketOffsets = Seq(1,1,1,1,0,0,0,0).combinations(4).flatMap(_.permutations)
 
-  def buckets(pt: V4DI): Iterator[Bucket] = bucket(pt) match {
+  def buckets[T](pt: V4D[T]): Iterator[Bucket] = bucket(pt) match {
     case Bucket(a, b, c, d) => bucketOffsets.map {
       case List(oA, oB, oC, oD) => Bucket(a + oA, b + oB, c + oC, d + oD)
     }
   }
 
-  def run(points: Seq[V4DI]) = {
-
+  def run(points: Seq[V4DI]) = {throw new RuntimeException("Use runUnnormed")}
+  override def runUnnormed(points: Seq[V4DD]) = {
     // Loop all points
-    for (p@V4DI(startX, startY, endX, endY) <- points) {
+    for (p@V4DD(startX, startY, endX, endY, _) <- points) {
       //println("p -> bucket: "+(p, bucket(p)))
       buckets(p).foreach{ bucket =>
         //println("p -> value: "+(p, bucket.center, radius, p.dist(bucket.center)))
-        bucketMap(bucket) += max(radius - p.dist(bucket.center), 0)
+        bucketMap(bucket) += max(radiusPct - p.dist(bucket.center), 0)
 //          bucketMap(bucket) += p.dist(bucket.center)
 
           maxValue = max(maxValue, bucketMap(bucket))
@@ -158,7 +159,7 @@ case class Heatmap4DBucketGrid(size: Int, radiusPct: Double) extends HeatmapLib(
 
     }
 
-    pointBucketWeights = points.map{ case p@V4DI(startX, startY, endX, endY) =>
+    pointBucketWeights = points.map{ case p@V4DD(startX, startY, endX, endY, _) =>
       //println("p -> map: "+(p, bucketMap(bucket(p))))
       p -> bucketMap(bucket(p))
     }
@@ -266,7 +267,8 @@ object Heatmap4D {
       ShowImage.showImage(pointsToImg(size, s))
 
       time("adding") {
-        hm.run(s.map(_.toI(size)))
+        //hm.run(s.map(_.toI(size)))
+        hm.runUnnormed(s)
 
         //println("running hashmap")
         //hmhm.run(s.map(_.toI(size)))
@@ -279,7 +281,7 @@ object Heatmap4D {
         val filename = s"output/heatmap4d_${algoName}_${size}_${s.size}_${hm.radius}_${System.currentTimeMillis / 1000}"
         //reflect.io.File(filename+".json").writeAll(arrayToJson(hm.gradientMap))
 
-        Printer.printToFile(new java.io.File(filename+".json")) { _.write(hm.toJson) }
+        Printer.printToFile(new java.io.File(filename+".json")) { _.write("var weightedPoints = \n"+hm.toJson) }
         ShowImage.saveImage(hm.toImage, filename+".png")
         ShowImage.showImage(hm.toImage)
       }

@@ -1,3 +1,6 @@
+//var Color = require("color");
+var Color = net.brehaut.Color;
+
 var rgbaBlue = 'rgba(51, 153, 204, 1)'
 var rgbaRed = 'rgba(204, 81, 81, 1)'
 var rgbaPurple = 'rgba(116, 79, 196, 1)'
@@ -40,15 +43,51 @@ function transform(pt) {
   return ol.proj.transform(pt, 'EPSG:4326', 'EPSG:3857');
 }
 
+function intensityColor(weight) {
+  var intensity = 1 - Math.log(weight)
+
+  //var rgbaRed = 'rgba(204, 81, 81, 1)'
+  var h = Math.abs((1.0-intensity) % 1.0);
+  var s = Math.abs(0.75 - 0.5*intensity);
+  var l = intensity;
+  var a = 1.0 - 0.7*intensity;
+  //return 'hsl('+h+','+s+','+l+')'//','+a+')'
+  //var c = Color();
+  //c.hue(h);
+  //c.saturation(s);
+  //c.lightness(l);
+  var c = Color({hue: 100*h, saturation: s, lightness: l});
+  c.setAlpha(a);
+  return c;
+}
+
 function sourceFromSegments(arr) {
   var ptFeatures = arr.map(function(pair) {
     var pt1 = transform(pair[0]);
     var pt2 = transform(pair[1]);
     var segment = new ol.geom.LineString([pt1, pt2])
+
+
+    var ftObj = { geometry: segment }
+
+    var feature = new ol.Feature(ftObj);
+    if (typeof(pair[2]) !=='undefined') {
+      //var color = intensityColor(pair[2])
+      //console.log("color: ", color);
+      //var colorStr = color.toCSS(1);
+      var colorStr = pair[2];
+      //console.log("color: ", colorStr);
+      var style = new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                //color: rgbaRed,
+                color: colorStr,
+                width: 1
+            }),
+        })
+      feature.setStyle(style)
+    }
     
-    return new ol.Feature({
-      geometry: segment
-    });
+    return feature
   });
   console.log(ptFeatures);
   var vectorSource = new ol.source.Vector({
