@@ -65,7 +65,7 @@ function logB(b, val) {
 }
 
 function norm(weight) {
-  return 1 - 2.5*logB(5.7*maxValue, weight)
+  return 1 - .17*logB(.006*maxValue, weight)
 }
 
 function sourceFromSegments(arr) {
