@@ -281,7 +281,9 @@ object Heatmap4D {
         val filename = s"output/heatmap4d_${algoName}_${size}_${s.size}_${hm.radius}_${System.currentTimeMillis / 1000}"
         //reflect.io.File(filename+".json").writeAll(arrayToJson(hm.gradientMap))
 
-        Printer.printToFile(new java.io.File(filename+".json")) { _.write("var weightedPoints = \n"+hm.toJson) }
+        Printer.printToFile(new java.io.File(filename+".json")) { w =>
+          w.write("var maxValue = "+hm.maxValue.toString+";\n")
+          w.write("var weightedPoints = \n"+hm.toJson) }
         ShowImage.saveImage(hm.toImage, filename+".png")
         ShowImage.showImage(hm.toImage)
       }

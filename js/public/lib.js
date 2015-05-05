@@ -54,10 +54,18 @@ function intensityColor(weight) {
 
 // SO's
   var h = intensity * 240
-  var a = (.03 * Math.log(5 - intensity))
+  var a = 1//(.3 * Math.log(5 - intensity))
 
   var c = tinycolor({h: h, s: 1, l: .5, a: a});
   return c;
+}
+
+function logB(b, val) {
+  return Math.log(val) / Math.log(b);
+}
+
+function norm(weight) {
+  return 1 - logB(3.5*maxValue, weight)
 }
 
 function sourceFromSegments(arr) {
@@ -71,13 +79,13 @@ function sourceFromSegments(arr) {
 
     var feature = new ol.Feature(ftObj);
     if (typeof(pair[2]) !=='undefined') {
-      var color = intensityColor(pair[2])
+      var intensity = norm(pair[2]);
+      var color = intensityColor(intensity);
       //console.log("color: ", color);
       var colorStr = color.toRgbString();
       //console.log("color: ", colorStr);
       var style = new ol.style.Style({
             stroke: new ol.style.Stroke({
-                //color: rgbaRed,
                 color: colorStr,
                 width: 1
             }),

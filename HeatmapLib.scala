@@ -163,6 +163,28 @@ abstract class HeatmapLib(size: Int) {
     color
   }
 
+  def meanAndStddev(seq: Seq[Double]) = {
+    val count = seq.size
+    val mean = seq.sum / count
+    val devs = seq.map(x => sqr(x - mean))
+    val stddev = Math.sqrt(devs.sum / count)
+
+    (mean, stddev)
+  }
+
+  def normalize(points: Seq[V4DI], scaleX: Double = 1, scaleY: Double = 1, offsetX: Double = 0, offsetY: Double = 0) = {
+    def norm(x: Double, mu: Double, sig: Double) = (x - mu) / sig
+    val (meanX, stddevX) = meanAndStddev(points.map(_.a.toDouble))
+    val (meanY, stddevY) = meanAndStddev(points.map(_.b.toDouble))
+
+    points.map { v => V4DD(
+      norm(v.a.toDouble, meanX, stddevX) * scaleX + offsetX,
+      norm(v.b.toDouble, meanY, stddevY) * scaleY + offsetY,
+      norm(v.c.toDouble, meanX, stddevX) * scaleX + offsetX,
+      norm(v.d.toDouble, meanY, stddevY) * scaleY + offsetY)
+    }
+  }
+
   def toImage = {
     val weights = pointWeights
 
@@ -170,15 +192,21 @@ abstract class HeatmapLib(size: Int) {
     val filtered = weights.filter(_._2 > 0)
     var sorted = filtered.sortBy(_._2)
 
+    val normalized = normalize(sorted.map(_._1), width/6, -width/6, width/2, width/2).zip(sorted.map(_._2))
+
+    val result = normalized
+
+    //result.take(20).foreach(println)
+
     val img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
 
     val g2d = img.createGraphics()
     g2d.setBackground(Color.getHSBColor(0, 0, 0))
-    sorted.foreach { case (V4DI(a, b, c, d), weight) =>
+    result.foreach { case (V4DD(a, b, c, d, _), weight) =>
       val color = weightToColor(weight)
       g2d.setColor(color)
       g2d.setStroke(new BasicStroke(1))
-      g2d.drawLine(a, b, c, d)
+      g2d.drawLine(a.toInt, b.toInt, c.toInt, d.toInt)
     }
 
     g2d.setColor(Color.black)
@@ -197,7 +225,7 @@ abstract class HeatmapLib(size: Int) {
 
     pointWeightsD.sortBy(_._2).map {
       //case (V4DI(a, b, c, d), w) => s"[[$a, $b], [$c, $d], $w]"
-      case (V4DD(a, b, c, d, _), w) => s"[[$a, $b], [$c, $d], ${weightToIntensity(w)}]"
+      case (V4DD(a, b, c, d, _), w) => s"[[$a, $b], [$c, $d], ${weightToIntensity(w)}, $w]"
     }.mkString("[", ",\n", "]")
   }
 }
