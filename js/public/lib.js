@@ -65,7 +65,7 @@ function logB(b, val) {
 }
 
 function norm(weight) {
-  return 1 - logB(3.5*maxValue, weight)
+  return 1 - 2.5*logB(5.7*maxValue, weight)
 }
 
 function sourceFromSegments(arr) {
@@ -87,7 +87,7 @@ function sourceFromSegments(arr) {
       var style = new ol.style.Style({
             stroke: new ol.style.Stroke({
                 color: colorStr,
-                width: 1
+                width: .15
             }),
         })
       feature.setStyle(style)
