@@ -70,8 +70,14 @@ function norm(weight) {
 
 function sourceFromSegments(arr) {
   var ptFeatures = arr.map(function(pair) {
+    if (Math.abs(pair[0][0] + 73) > 2 || Math.abs(pair[1][0] + 73) > 2) {
+      console.log(pt1, pt2);
+      return null;
+    }
+
     var pt1 = transform(pair[0]);
     var pt2 = transform(pair[1]);
+
     var segment = new ol.geom.LineString([pt1, pt2])
 
 
@@ -94,7 +100,7 @@ function sourceFromSegments(arr) {
     }
     
     return feature
-  });
+  }).filter(function(x){ return x != null});;
   console.log(ptFeatures);
   var vectorSource = new ol.source.Vector({
     features: ptFeatures, //add an array of features
@@ -105,10 +111,13 @@ function sourceFromSegments(arr) {
 
 function sourceFromPoints(arr) {
   var ptFeatures = arr.map(function(pt) {
+    if (Math.abs(pt[0] + 73) > 2) {
+      return null;
+    }
     return new ol.Feature({
       geometry: new ol.geom.Point(transform(pt))
     });
-  });
+  }).filter(function(x){ return x != null});
   //console.log(ptFeatures);
   var vectorSource = new ol.source.Vector({
     features: ptFeatures, //add an array of features
