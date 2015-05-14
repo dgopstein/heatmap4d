@@ -4,7 +4,7 @@ content = 'start';
 // http://stackoverflow.com/questions/26977151/styling-multilinestring-with-different-color
 
 function loadData() {
-  return points.slice(0,1000);
+  return points.slice(0,10000);
 }
 
 function drawSegments(arr) {
